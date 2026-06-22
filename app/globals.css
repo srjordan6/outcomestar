@@ -1,0 +1,78 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  .font-mono,
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    @apply bg-accent text-paper;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-eyebrow text-ink-soft;
+  }
+
+  .stroke-heading {
+    @apply font-display text-2xl font-semibold tracking-tight text-ink mt-12 mb-3;
+  }
+
+  .pill {
+    @apply inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider border;
+  }
+  .pill-filled {
+    @apply bg-ink text-paper border-ink;
+  }
+  .pill-outline {
+    @apply bg-transparent text-ink-soft border-rule;
+  }
+
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .data-table thead th {
+    @apply text-left text-[11px] font-semibold uppercase tracking-eyebrow text-ink-soft py-3 px-3 border-b border-ink;
+  }
+  .data-table tbody td {
+    @apply py-3 px-3 align-middle border-b border-rule;
+  }
+  .data-table tbody tr:hover td {
+    @apply bg-paper;
+  }
+  .data-table tbody tr:nth-child(even) td {
+    background-color: rgba(226, 232, 240, 0.18);
+  }
+  .data-table .num {
+    @apply font-mono text-ink;
+  }
+  .data-table .pos {
+    @apply font-mono text-good font-semibold;
+  }
+  .data-table .neg {
+    @apply font-mono text-gold;
+  }
+  .data-table .muted {
+    @apply text-ink-fade;
+  }
+}
