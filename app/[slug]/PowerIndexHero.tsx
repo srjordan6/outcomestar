@@ -54,7 +54,7 @@ export function PowerIndexHero({ pi }: { pi: PowerIndexBlock | undefined }) {
           <p className="mt-5 text-xs text-ink-fade">
             Source:{" "}
             {src.source_url ? (
-              
+  
                 href={src.source_url}
                 target="_blank"
                 rel="noopener"
