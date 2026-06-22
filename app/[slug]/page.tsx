@@ -83,7 +83,7 @@ async function fetchStudent(studentId: string) {
   }
 }
 
-async function fetchRecords(studentId: string, type: string): Promise<unknown[]> {
+async function fetchRecords(studentId: string, type: string): Promise<any[]> {
   if (!API_TOKEN) return [];
   try {
     const r = await fetch(
@@ -105,7 +105,7 @@ async function fetchRecords(studentId: string, type: string): Promise<unknown[]>
   }
 }
 
-async function fetchTargetUniversities(studentId: string): Promise<unknown[]> {
+async function fetchTargetUniversities(studentId: string): Promise<any[]> {
   if (!API_TOKEN) return [];
   try {
     const r = await fetch(
