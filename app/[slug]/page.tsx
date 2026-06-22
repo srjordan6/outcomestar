@@ -39,6 +39,8 @@ interface TenantConfig {
   themeKey: string;
   /** Optional tagline shown in the Mission Profile panel. */
   tagline?: string;
+  /** Optional URL to a portrait image rendered in the Mission Profile panel. */
+  photoUrl?: string;
 }
 
 const TENANTS: Record<string, TenantConfig> = {
@@ -49,6 +51,7 @@ const TENANTS: Record<string, TenantConfig> = {
     displayName: "John Ray Jordan",
     themeKey: "mission-control",
     tagline: "Future astronaut · breaststroke specialist",
+    photoUrl: "https://johnrjordan.com/wp-content/uploads/2026/05/john-at-the-cotillion-Ball-03292026-2-2-scaled.jpg",
   },
 };
 
@@ -200,6 +203,7 @@ export default async function StudentShowcasePage({
     feed,
     displayName: tenant.displayName,
     tagline: tenant.tagline,
+    photoUrl: tenant.photoUrl,
     assessments,
     goals,
     affiliations,
