@@ -1,14 +1,15 @@
 /**
  * app/[slug]/page.tsx — OutcomeStar public showcase route.
  *
- * Server component. Fetches the student's FOCMS feed and identity, resolves
- * the tenant's chosen theme, renders the theme component with the data.
+ * Server component. Fetches the student's showcase config + identity data +
+ * portfolio feed, resolves the chosen theme, renders the theme component.
  *
- * Architecture v2.2 §10:
+ * Architecture v2.2 §10 (commercial-ready):
  *   - One Next.js app handles every tenant via dynamic [slug] routing.
- *   - tenant_settings.theme.key selects the theme. Until product launch,
- *     all tenants render Mission Control.
- *   - URL override `?theme=...` previews any theme without persisting.
+ *   - Tenant config is loaded from focms-api at request time, not from a
+ *     hardcoded TENANTS constant. Adding a new student is one INSERT into
+ *     public_showcases — no code change, no deploy.
+ *   - tenant_settings.theme.key selects the theme; ?theme= or ?view= override.
  *
  * Environment:
  *   FOCMS_API_URL      default https://focms-api.onrender.com
@@ -25,39 +26,20 @@ import {
 } from "@/lib/themes";
 
 // ---------------------------------------------------------------------------
-// Tenant registry — until the parent portal lands, every new student is a row
-// here. Architecture v2.2: this will move to the `tenants` table at launch.
+// Showcase config — fetched per request from focms-api
 // ---------------------------------------------------------------------------
 
-interface TenantConfig {
+interface ShowcaseConfig {
+  id: string;
   slug: string;
-  studentId: string;
-  tenantId: string;
-  /** Display name for the public page. */
-  displayName: string;
-  /** Tenant's chosen theme key. Until launch, hardcoded to mission-control. */
-  themeKey: string;
-  /** Optional tagline shown in the Mission Profile panel. */
-  tagline?: string;
-  /** Optional URL to a portrait image rendered in the Mission Profile panel. */
-  photoUrl?: string;
+  tenant_id: string;
+  student_id: string;
+  theme_key: string;
+  display_name: string | null;
+  tagline: string | null;
+  photo_url: string | null;
+  visibility: string;
 }
-
-const TENANTS: Record<string, TenantConfig> = {
-  john: {
-    slug: "john",
-    studentId: "019ed384-5769-72ca-864a-28e40c4e5d30",
-    tenantId: "019ed384-56fc-7516-bfbf-efaa5231e281",
-    displayName: "John Ray Jordan",
-    themeKey: "mission-control",
-    tagline: "Future astronaut · breaststroke specialist",
-    photoUrl: "https://johnrjordan.com/wp-content/uploads/2026/05/john-at-the-cotillion-Ball-03292026-2-2-scaled.jpg",
-  },
-};
-
-// ---------------------------------------------------------------------------
-// Data fetchers
-// ---------------------------------------------------------------------------
 
 const API = process.env.FOCMS_API_URL ?? "https://focms-api.onrender.com";
 const FEED_URL =
@@ -65,11 +47,30 @@ const FEED_URL =
   "https://johnrjordan.com/focms-feed-swim-bests/";
 const API_TOKEN = process.env.FOCMS_API_TOKEN;
 
-async function fetchStudent(studentId: string) {
+async function fetchShowcase(slug: string): Promise<ShowcaseConfig | null> {
   if (!API_TOKEN) {
-    console.warn("FOCMS_API_TOKEN not set; skipping student fetch");
-    return {};
+    console.warn("FOCMS_API_TOKEN not set; cannot resolve showcase");
+    return null;
   }
+  try {
+    const r = await fetch(`${API}/focms/v1/showcase/${slug}`, {
+      headers: { Authorization: `Bearer ${API_TOKEN}` },
+      next: { revalidate: 60 },
+    });
+    if (r.status === 404) return null;
+    if (!r.ok) {
+      console.warn(`showcase fetch ${r.status}`);
+      return null;
+    }
+    return (await r.json()) as ShowcaseConfig;
+  } catch (e) {
+    console.warn("showcase fetch failed", e);
+    return null;
+  }
+}
+
+async function fetchStudent(studentId: string) {
+  if (!API_TOKEN) return {};
   try {
     const r = await fetch(`${API}/focms/v1/student/${studentId}`, {
       headers: { Authorization: `Bearer ${API_TOKEN}` },
@@ -139,7 +140,6 @@ async function fetchFeed() {
     const html = await r.text();
     const match = html.match(/<pre id="focms-payload">([\s\S]+?)<\/pre>/);
     if (!match) return {};
-    // Decode HTML entities the feed may contain
     const decoded = match[1]
       .replace(/&quot;/g, '"')
       .replace(/&amp;/g, "&")
@@ -168,9 +168,12 @@ export default async function StudentShowcasePage({
 }: PageProps) {
   const { slug } = await params;
   const { theme: themeOverride, view } = await searchParams;
-  const tenant = TENANTS[slug];
-  if (!tenant) return notFound();
 
+  // Step 1: resolve the showcase config (slug -> tenant + student + display)
+  const showcase = await fetchShowcase(slug);
+  if (!showcase) return notFound();
+
+  // Step 2: in parallel, fetch the data the theme will render
   const [
     student,
     feed,
@@ -179,31 +182,31 @@ export default async function StudentShowcasePage({
     affiliations,
     targetUniversities,
   ] = await Promise.all([
-    fetchStudent(tenant.studentId),
+    fetchStudent(showcase.student_id),
     fetchFeed(),
-    fetchRecords(tenant.studentId, "assessments"),
-    fetchRecords(tenant.studentId, "goals"),
-    fetchRecords(tenant.studentId, "affiliations"),
-    fetchTargetUniversities(tenant.studentId),
+    fetchRecords(showcase.student_id, "assessments"),
+    fetchRecords(showcase.student_id, "goals"),
+    fetchRecords(showcase.student_id, "affiliations"),
+    fetchTargetUniversities(showcase.student_id),
   ]);
 
-  // Theme resolution priority (highest wins):
+  // Step 3: theme resolution priority (highest wins):
   //   1. ?theme=<key>     — explicit theme key
   //   2. ?view=<alias>    — semantic alias (e.g. view=resume → resume-mode)
-  //   3. tenant.themeKey  — tenant's persisted choice
+  //   3. showcase.theme_key — tenant's persisted choice
   //   4. DEFAULT_THEME_KEY
   const aliasedTheme = view ? VIEW_ALIASES[view] : undefined;
   const effectiveThemeKey =
-    themeOverride ?? aliasedTheme ?? tenant.themeKey ?? DEFAULT_THEME_KEY;
+    themeOverride ?? aliasedTheme ?? showcase.theme_key ?? DEFAULT_THEME_KEY;
   const theme = resolveTheme(effectiveThemeKey);
   const Theme = theme.component;
 
   const themeProps: ThemeProps = {
     student,
     feed,
-    displayName: tenant.displayName,
-    tagline: tenant.tagline,
-    photoUrl: tenant.photoUrl,
+    displayName: showcase.display_name ?? undefined,
+    tagline: showcase.tagline ?? undefined,
+    photoUrl: showcase.photo_url ?? undefined,
     assessments,
     goals,
     affiliations,
@@ -215,10 +218,11 @@ export default async function StudentShowcasePage({
 
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
-  const tenant = TENANTS[slug];
-  if (!tenant) return { title: "OutcomeStar" };
+  const showcase = await fetchShowcase(slug);
+  if (!showcase) return { title: "OutcomeStar" };
+  const name = showcase.display_name ?? slug;
   return {
-    title: `${tenant.displayName} · OutcomeStar`,
-    description: `Mission Control telemetry: ${tenant.displayName}'s portfolio.`,
+    title: `${name} · OutcomeStar`,
+    description: `Mission Control telemetry: ${name}'s portfolio.`,
   };
 }
