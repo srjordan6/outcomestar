@@ -13,6 +13,7 @@ export function PowerIndexHero({ pi }: { pi: PowerIndexBlock | undefined }) {
 
   const src = pi.base_times_source ?? {};
   const refreshed = formatRefreshedAt(src.refreshed_at);
+  const yearLabel = src.effective_year != null ? String(src.effective_year) : "";
 
   return (
     <section className="border-y border-ink/90 py-14 my-12">
@@ -23,11 +24,10 @@ export function PowerIndexHero({ pi }: { pi: PowerIndexBlock | undefined }) {
             {pi.value.toFixed(1)}
           </div>
           <p className="mt-6 max-w-md text-ink-soft text-base leading-relaxed">
-            Swimcloud-style metric. Lower is better. Computed from{" "}
+            Lower is better. Computed from{" "}
             <span className="font-mono text-ink">{pi.total_eligible_events}</span>{" "}
             eligible events benchmarked against NCAA Division I Men&apos;s{" "}
-            <span className="whitespace-nowrap">{src.effective_year ?? ""}</span>{" "}
-            qualifying standards.
+            <span className="whitespace-nowrap">{yearLabel}</span> qualifying standards.
           </p>
         </div>
 
@@ -52,20 +52,8 @@ export function PowerIndexHero({ pi }: { pi: PowerIndexBlock | undefined }) {
             ))}
           </ol>
           <p className="mt-5 text-xs text-ink-fade">
-            Source:{" "}
-            {src.source_url ? (
-  
-                href={src.source_url}
-                target="_blank"
-                rel="noopener"
-                className="text-accent hover:underline underline-offset-4"
-              >
-                NCAA D1 Men {src.effective_year ?? ""} Qualifying Standards
-              </a>
-            ) : (
-              <span>NCAA D1 Men Qualifying Standards</span>
-            )}
-            {refreshed && <span> · refreshed {refreshed}</span>}
+            Source: NCAA Division I Men {yearLabel} qualifying standards
+            {refreshed ? ` · refreshed ${refreshed}` : ""}
           </p>
         </div>
       </div>
