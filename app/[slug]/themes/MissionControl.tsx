@@ -137,6 +137,8 @@ export interface MissionControlProps {
   displayName?: string;
   /** Optional kid-text tagline from tenant_settings.theme.kid_text. */
   tagline?: string;
+  /** Optional URL to a portrait image rendered in the Mission Profile panel. */
+  photoUrl?: string;
   /** Optional extended data — degrades gracefully if absent. */
   assessments?: Assessment[];
   goals?: Goal[];
@@ -344,11 +346,13 @@ function MissionProfilePanel({
   student,
   tagline,
   feed,
+  photoUrl,
 }: {
   displayName: string;
   student: StudentProfile;
   tagline?: string;
   feed: FocmsFeed;
+  photoUrl?: string;
 }) {
   const grade = student.current_grade ?? "—";
   const age = student.age_years ?? "—";
@@ -363,8 +367,23 @@ function MissionProfilePanel({
         <h2 className="font-mono text-[11px] tracking-[0.3em] text-[#FC3D21]">MISSION PROFILE</h2>
       </div>
       <div className="font-mono">
-        <div className="text-[24px] font-bold text-white leading-tight">{displayName}</div>
-        {tagline && <div className="mt-1 text-[12px] text-[#a4b3d4] italic">"{tagline}"</div>}
+        <div className="flex items-center gap-4">
+          {photoUrl && (
+            <img
+              src={photoUrl}
+              alt={displayName}
+              className="w-20 h-20 rounded-full object-cover flex-shrink-0"
+              style={{
+                border: "2px solid #FC3D21",
+                boxShadow: "0 0 12px rgba(252, 61, 33, 0.4)",
+              }}
+            />
+          )}
+          <div className="min-w-0">
+            <div className="text-[22px] font-bold text-white leading-tight">{displayName}</div>
+            {tagline && <div className="mt-1 text-[12px] text-[#a4b3d4] italic">"{tagline}"</div>}
+          </div>
+        </div>
       </div>
       <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 font-mono text-[12px]">
         <dt className="text-[#5b6a8a] tracking-[0.18em]">GRADE</dt>
@@ -823,6 +842,7 @@ const MissionControl: React.FC<MissionControlProps> = ({
   feed,
   displayName,
   tagline,
+  photoUrl,
   assessments = [],
   goals = [],
   affiliations = [],
@@ -889,6 +909,7 @@ const MissionControl: React.FC<MissionControlProps> = ({
                 student={student}
                 tagline={tagline}
                 feed={feed}
+                photoUrl={photoUrl}
               />
               <PrimarySystemsPanel topFour={topFour} />
             </div>
