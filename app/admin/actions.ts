@@ -6,6 +6,10 @@
  * All mutations the customer's admin console performs go through these
  * functions. They hold the FOCMS_API_TOKEN (never sent to browser) and
  * make server-side calls to focms-api.
+ *
+ * v1.0.1: loginAction redirects on failure instead of returning a result
+ * object, so it can be used directly as <form action>. Failure mode is
+ * communicated via ?error=… query param on the redirect target.
  */
 
 import { cookies } from "next/headers";
@@ -36,13 +40,13 @@ async function apiCall(method: string, path: string, body?: any) {
   return r.json();
 }
 
-export async function loginAction(_prev: any, formData: FormData) {
+export async function loginAction(formData: FormData) {
   const submitted = formData.get("password")?.toString() ?? "";
   if (!ADMIN_PASSWORD) {
-    return { ok: false, error: "ADMIN_PASSWORD env var not set on outcomestar service" };
+    redirect("/admin?error=noenv");
   }
   if (submitted !== ADMIN_PASSWORD) {
-    return { ok: false, error: "Wrong password" };
+    redirect("/admin?error=wrong");
   }
   const c = await cookies();
   c.set(COOKIE_NAME, "ok", {
@@ -77,7 +81,6 @@ export async function createStudentAction(_prev: any, formData: FormData) {
 
   try {
     const student = await apiCall("POST", "/focms/v1/students", payload);
-    // Auto-create a private showcase scaffold
     const slugSeed = (payload.first_name + payload.last_name)
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "");
@@ -135,10 +138,6 @@ export async function deleteStudentAction(formData: FormData) {
   revalidatePath("/admin");
 }
 
-/**
- * Upload a photo. Called by the AdminClient with base64-encoded file bytes.
- * Returns the public URL the showcase can reference.
- */
 export async function uploadPhotoAction(payload: {
   filename: string;
   mimeType: string;

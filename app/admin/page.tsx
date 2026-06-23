@@ -5,12 +5,8 @@
  * form. If authed, fetches all showcases + students for the tenant and
  * passes to the client component which handles interactivity.
  *
- * Cookie auth pattern: ADMIN_PASSWORD env var on the outcomestar Render
- * service. Validates server-side, sets HTTP-only signed cookie.
- *
- * For multi-tenant SaaS, ADMIN_PASSWORD becomes per-tenant (stored hashed
- * in tenants table) and the cookie carries a tenant_id claim. This MVP
- * uses a single env var; the architecture supports both patterns.
+ * v1.0.1: loginAction is a void server action that redirects on failure,
+ * with the failure mode communicated via ?error= query param.
  */
 
 import { cookies } from "next/headers";
@@ -20,6 +16,10 @@ import AdminClient from "./AdminClient";
 const API = process.env.FOCMS_API_URL ?? "https://focms-api.onrender.com";
 const API_TOKEN = process.env.FOCMS_API_TOKEN;
 const COOKIE_NAME = "outcomestar_admin";
+
+interface PageProps {
+  searchParams: Promise<{ error?: string }>;
+}
 
 async function apiFetch(path: string) {
   if (!API_TOKEN) return null;
@@ -35,15 +35,23 @@ async function apiFetch(path: string) {
   }
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: PageProps) {
   const c = await cookies();
   const authed = c.get(COOKIE_NAME)?.value === "ok";
+  const { error } = await searchParams;
 
   if (!authed) {
+    const errorMessage =
+      error === "wrong"
+        ? "Wrong password."
+        : error === "noenv"
+        ? "ADMIN_PASSWORD env var not set on outcomestar service."
+        : null;
+
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
         <form
-          action={loginAction.bind(null, null)}
+          action={loginAction}
           className="bg-white rounded-lg shadow-md p-8 w-full max-w-sm border border-stone-200"
         >
           <h1 className="font-serif text-2xl font-semibold text-stone-900 mb-1">
@@ -60,11 +68,14 @@ export default async function AdminPage() {
             name="password"
             required
             autoFocus
-            className="w-full px-3 py-2 border border-stone-300 rounded mb-4 font-mono text-sm focus:outline-none focus:border-orange-600"
+            className="w-full px-3 py-2 border border-stone-300 rounded mb-2 font-mono text-sm focus:outline-none focus:border-orange-600"
           />
+          {errorMessage && (
+            <p className="text-xs text-red-600 mb-3">{errorMessage}</p>
+          )}
           <button
             type="submit"
-            className="w-full bg-stone-900 text-white py-2 rounded font-medium hover:bg-stone-800 transition"
+            className="w-full bg-stone-900 text-white py-2 rounded font-medium hover:bg-stone-800 transition mt-2"
           >
             Sign in
           </button>
@@ -73,7 +84,6 @@ export default async function AdminPage() {
     );
   }
 
-  // Authed — fetch state for the client component
   const [showcasesData, studentsData] = await Promise.all([
     apiFetch("/focms/v1/public_showcases"),
     apiFetch("/focms/v1/students"),
