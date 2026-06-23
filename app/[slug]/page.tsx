@@ -14,7 +14,10 @@
  * Environment:
  *   FOCMS_API_URL      default https://focms-api.onrender.com
  *   FOCMS_API_TOKEN    bearer token for focms-api server-side calls
- *   FOCMS_FEED_URL     fallback swim feed (v0.1 data source)
+ *
+ * v1.6: fetchFeed now hits /focms/v1/student/{id}/computed/swim-bests instead
+ * of the johnrjordan.com WP feed. Each student sees their own swim data
+ * computed from personal_records, no bleed across students.
  */
 
 import { notFound } from "next/navigation";
@@ -42,9 +45,6 @@ interface ShowcaseConfig {
 }
 
 const API = process.env.FOCMS_API_URL ?? "https://focms-api.onrender.com";
-const FEED_URL =
-  process.env.FOCMS_FEED_URL ??
-  "https://johnrjordan.com/focms-feed-swim-bests/";
 const API_TOKEN = process.env.FOCMS_API_TOKEN;
 
 async function fetchShowcase(slug: string): Promise<ShowcaseConfig | null> {
@@ -131,24 +131,25 @@ async function fetchTargetUniversities(studentId: string): Promise<any[]> {
   }
 }
 
-async function fetchFeed() {
-  // v0.1 source: WP-hosted feed page. Parses <pre id="focms-payload">{...}</pre>.
-  // v0.2 source (planned): direct call to focms-api /computed/* endpoints.
+async function fetchFeed(studentId: string) {
+  // v0.2: student-scoped swim feed computed server-side from personal_records.
+  // Replaces the per-student bleed from the johnrjordan.com hardcoded WP feed.
+  if (!API_TOKEN) return {};
   try {
-    const r = await fetch(FEED_URL, { next: { revalidate: 300 } });
-    if (!r.ok) return {};
-    const html = await r.text();
-    const match = html.match(/<pre id="focms-payload">([\s\S]+?)<\/pre>/);
-    if (!match) return {};
-    const decoded = match[1]
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&#039;/g, "'");
-    return JSON.parse(decoded);
+    const r = await fetch(
+      `${API}/focms/v1/student/${studentId}/computed/swim-bests`,
+      {
+        headers: { Authorization: `Bearer ${API_TOKEN}` },
+        next: { revalidate: 300 },
+      },
+    );
+    if (!r.ok) {
+      console.warn(`swim-bests fetch ${r.status}`);
+      return {};
+    }
+    return await r.json();
   } catch (e) {
-    console.warn("feed fetch failed", e);
+    console.warn("swim-bests fetch failed", e);
     return {};
   }
 }
@@ -183,7 +184,7 @@ export default async function StudentShowcasePage({
     targetUniversities,
   ] = await Promise.all([
     fetchStudent(showcase.student_id),
-    fetchFeed(),
+    fetchFeed(showcase.student_id),
     fetchRecords(showcase.student_id, "assessments"),
     fetchRecords(showcase.student_id, "goals"),
     fetchRecords(showcase.student_id, "affiliations"),
