@@ -3,38 +3,6 @@
 import { useEffect, useReducer, useState } from "react";
 import type { FormResponse, ParentContext, FieldUpdate } from "@/lib/types";
 import { fetchForm, saveFields, ApiError } from "@/lib/api";
-import FieldRouter from "./FieldRouter";
-import SectionNav from "./SectionNav";
-import SaveStatusIndicator, { type SaveStatus } from "./SaveStatusIndicator";
-
-type State = {
-  form: FormResponse | null;
-  values: Record<string, unknown>;
-  dirty: Set<string>;
-  activeSectionId: string;
-  loading: boolean;
-  loadError: string | null;
-  saveStatus: SaveStatus;
-  saveError: string | null;
-};
-
-type Action =
-  | { type: "load_start" }
-  | { type: "load_ok"; form: FormResponse }
-  | { type: "load_fail"; error: string }
-  | { type: "set_active"; sectionId: string }
-  | { type: "set_value"; field_code: string; value: unknown }
-  | { type: "save_start" }
-  | { type: "save_ok" }
-  | { type: "save_fail"; error: string };
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case "lo"use client";
-
-import { useEffect, useReducer, useState } from "react";
-import type { FormResponse, ParentContext, FieldUpdate } from "@/lib/types";
-import { fetchForm, saveFields, ApiError } from "@/lib/api";
 import FieldRouter from "@/components/parent/FieldRouter";
 import SectionNav from "@/components/parent/SectionNav";
 import SaveStatusIndicator, { type SaveStatus } from "@/components/parent/SaveStatusIndicator";

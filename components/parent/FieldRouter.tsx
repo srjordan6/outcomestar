@@ -1,34 +1,6 @@
 "use client";
 
 import type { FieldDef } from "@/lib/types";
-import TextField from "./fields/TextField";
-import LongTextField from "./fields/LongTextField";
-import ChoiceField from "./fields/ChoiceField";
-import MultiSelectField from "./fields/MultiSelectField";
-import DateField from "./fields/DateField";
-import NumberField from "./fields/NumberField";
-import BooleanField from "./fields/BooleanField";
-import ArrayOfObjectsField from "./fields/ArrayOfObjectsField";
-import LockedFieldNotice from "./LockedFieldNotice";
-
-type Props = {
-  field: FieldDef;
-  value: unknown;
-  onChange: (next: unknown) => void;
-};
-
-export default function FieldRouter({ field, value, onChange }: Props) {
-  if (field.is_locked_by_law) {
-    return <LockedFieldNotice field={field} value={value} />;
-  }
-
-  switch (field.field_kind) {
-    case "text":
-      return <TextField field={field} value={value as string | null} onChange={onChange as (v: string) => void} />;
-    case "email":
-      return <TextField field={field} value={value as st"use client";
-
-import type { FieldDef } from "@/lib/types";
 import TextField from "@/components/parent/fields/TextField";
 import LongTextField from "@/components/parent/fields/LongTextField";
 import ChoiceField from "@/components/parent/fields/ChoiceField";
