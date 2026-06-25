@@ -1329,23 +1329,22 @@ function ArtifactsModal({
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    
-                      href={contentUrl}
-                      target="_blank"
-                      rel="noreferrer"
+                    <span
+                      onClick={() => window.open(contentUrl, "_blank", "noreferrer")}
                       style={{
                         color: C.navy,
                         fontWeight: 600,
                         fontSize: 14,
-                        textDecoration: "none",
+                        cursor: "pointer",
                         display: "block",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
+                        textDecoration: "underline",
                       }}
                     >
                       {a.original_filename}
-                    </a>
+                    </span>
                     <div style={{ color: C.gray, fontSize: 12 }}>
                       {humanSize(a.byte_size)} · {a.visibility}
                     </div>
