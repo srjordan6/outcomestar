@@ -10,6 +10,7 @@ interface VerifyResponse {
   valid: boolean;
   student_id?: string;
   display_name?: string;
+  student_first_name?: string;
 }
 
 export default function MilestonesPage() {
@@ -20,15 +21,20 @@ export default function MilestonesPage() {
 
   useEffect(() => {
     if (!token) return;
-    fetch(`${API_BASE}/focms/v1/parent/token/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    })
-      .then((r) => r.json())
-      .then((data: VerifyResponse) => {
+    fetch(
+      `${API_BASE}/focms/v1/parent/auth/verify-token?t=${encodeURIComponent(token)}`,
+      { method: "POST" },
+    )
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.text();
+          throw new Error(`HTTP ${r.status}: ${body.slice(0, 200)}`);
+        }
+        return r.json() as Promise<VerifyResponse>;
+      })
+      .then((data) => {
         if (!data.valid || !data.student_id) {
-          setError("Invalid or expired token.");
+          setError("Token verification failed.");
           return;
         }
         setStudentId(data.student_id);
