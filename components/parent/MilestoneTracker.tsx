@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 const C = {
   navy: "#201868",
@@ -14,6 +14,8 @@ const C = {
 };
 const FONT_SERIF = 'Georgia, "Times New Roman", serif';
 const FONT_SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+const API_BASE = "https://focms-api.onrender.com";
+const MAX_FILE_MB = 25;
 
 interface CatalogRow {
   code: string;
@@ -29,6 +31,7 @@ interface CatalogRow {
   first_hit: string | null;
   event_count: number;
   milestone_id: string | null;
+  artifact_count: number;
 }
 
 interface CustomEvent {
@@ -37,6 +40,7 @@ interface CustomEvent {
   custom_category: string | null;
   event_date: string;
   event_notes: string | null;
+  artifact_count: number;
 }
 
 interface PickerResponse {
@@ -46,6 +50,18 @@ interface PickerResponse {
   custom_count: number;
   catalog: CatalogRow[];
   custom_events: CustomEvent[];
+}
+
+interface ArtifactRow {
+  attachment_id: string;
+  artifact_id: string;
+  kind: "image" | "video" | "document" | "other";
+  mime_type: string;
+  original_filename: string;
+  byte_size: number;
+  caption: string | null;
+  visibility: string;
+  uploaded_at: string | null;
 }
 
 const AGE_BAND_LABELS: Record<string, string> = {
@@ -64,7 +80,18 @@ const STATUS_LABELS: Record<string, { label: string; bg: string; fg: string }> =
   available: { label: "AVAILABLE", bg: C.grayLight, fg: C.grayDark },
 };
 
-const API_BASE = "https://focms-api.onrender.com";
+function humanSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function kindIcon(kind: string) {
+  if (kind === "image") return "🖼";
+  if (kind === "video") return "🎬";
+  if (kind === "document") return "📄";
+  return "📎";
+}
 
 export function MilestoneTracker({
   token,
@@ -85,6 +112,10 @@ export function MilestoneTracker({
   });
   const [captureFor, setCaptureFor] = useState<CatalogRow | null>(null);
   const [showCustomForm, setShowCustomForm] = useState(false);
+  const [viewingArtifactsFor, setViewingArtifactsFor] = useState<{
+    milestone_id: string;
+    title: string;
+  } | null>(null);
 
   async function loadPicker() {
     setLoading(true);
@@ -220,16 +251,41 @@ export function MilestoneTracker({
                   marginBottom: 8,
                 }}
               >
-                <div style={{ fontWeight: 600, color: C.navy }}>{evt.custom_title}</div>
-                <div style={{ color: C.gray, fontSize: 13, marginTop: 4 }}>
-                  {evt.event_date}
-                  {evt.custom_category ? ` · ${evt.custom_category}` : ""}
-                </div>
-                {evt.event_notes && (
-                  <div style={{ color: C.grayDark, fontSize: 14, marginTop: 8 }}>
-                    {evt.event_notes}
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: C.navy }}>{evt.custom_title}</div>
+                    <div style={{ color: C.gray, fontSize: 13, marginTop: 4 }}>
+                      {evt.event_date}
+                      {evt.custom_category ? ` · ${evt.custom_category}` : ""}
+                      {evt.artifact_count > 0 ? ` · ${evt.artifact_count} attached` : ""}
+                    </div>
+                    {evt.event_notes && (
+                      <div style={{ color: C.grayDark, fontSize: 14, marginTop: 8 }}>
+                        {evt.event_notes}
+                      </div>
+                    )}
                   </div>
-                )}
+                  <button
+                    onClick={() =>
+                      setViewingArtifactsFor({ milestone_id: evt.id, title: evt.custom_title })
+                    }
+                    style={{
+                      background: "transparent",
+                      color: C.navy,
+                      border: `1.5px solid ${C.navy}`,
+                      borderRadius: 4,
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: FONT_SANS,
+                      whiteSpace: "nowrap",
+                      height: "fit-content",
+                    }}
+                  >
+                    {evt.artifact_count > 0 ? `Files (${evt.artifact_count})` : "+ Add file"}
+                  </button>
+                </div>
               </div>
             ))}
           </section>
@@ -285,6 +341,13 @@ export function MilestoneTracker({
                       key={row.code}
                       row={row}
                       onCapture={() => setCaptureFor(row)}
+                      onViewFiles={() =>
+                        row.milestone_id &&
+                        setViewingArtifactsFor({
+                          milestone_id: row.milestone_id,
+                          title: row.title,
+                        })
+                      }
                     />
                   ))}
                 </div>
@@ -305,12 +368,33 @@ export function MilestoneTracker({
             }}
           />
         )}
+
+        {viewingArtifactsFor && (
+          <ArtifactsModal
+            milestoneId={viewingArtifactsFor.milestone_id}
+            title={viewingArtifactsFor.title}
+            token={token}
+            studentId={studentId}
+            onClose={() => {
+              setViewingArtifactsFor(null);
+              loadPicker();
+            }}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function MilestoneCard({ row, onCapture }: { row: CatalogRow; onCapture: () => void }) {
+function MilestoneCard({
+  row,
+  onCapture,
+  onViewFiles,
+}: {
+  row: CatalogRow;
+  onCapture: () => void;
+  onViewFiles: () => void;
+}) {
   const s = STATUS_LABELS[row.status];
   return (
     <div
@@ -344,10 +428,31 @@ function MilestoneCard({ row, onCapture }: { row: CatalogRow; onCapture: () => v
           <div style={{ color: C.gray, fontSize: 13, marginTop: 2 }}>{row.description}</div>
         )}
         {row.first_hit && (
-          <div style={{ color: C.navy, fontSize: 12, marginTop: 4 }}>Happened: {row.first_hit}</div>
+          <div style={{ color: C.navy, fontSize: 12, marginTop: 4 }}>
+            Happened: {row.first_hit}
+            {row.artifact_count > 0 ? ` · ${row.artifact_count} file${row.artifact_count === 1 ? "" : "s"}` : ""}
+          </div>
         )}
       </div>
-      {row.status !== "achieved" && (
+      {row.status === "achieved" ? (
+        <button
+          onClick={onViewFiles}
+          style={{
+            background: "transparent",
+            color: C.navy,
+            border: `1.5px solid ${C.navy}`,
+            borderRadius: 4,
+            padding: "6px 12px",
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer",
+            fontFamily: FONT_SANS,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {row.artifact_count > 0 ? `Files (${row.artifact_count})` : "+ Add file"}
+        </button>
+      ) : (
         <button
           onClick={onCapture}
           style={{
@@ -416,7 +521,7 @@ function VisibilityToggle({
             Show on outcomestar.app/north-star
           </span>
           <span style={{ display: "block", color: C.gray, fontSize: 12, marginTop: 2 }}>
-            Public — anyone with the URL can see this milestone, date, and your comment.
+            Public — anyone with the URL can see this milestone, date, comment, and any files.
           </span>
         </span>
       </label>
@@ -451,6 +556,134 @@ function VisibilityToggle({
   );
 }
 
+function FileInput({
+  files,
+  onChange,
+}: {
+  files: File[];
+  onChange: (next: File[]) => void;
+}) {
+  const ref = useRef<HTMLInputElement | null>(null);
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <span
+        style={{
+          color: C.navy,
+          fontSize: 12,
+          fontWeight: 500,
+          letterSpacing: "0.05em",
+          textTransform: "uppercase",
+          display: "block",
+          marginBottom: 6,
+        }}
+      >
+        Attach files (optional)
+      </span>
+      <input
+        ref={ref}
+        type="file"
+        multiple
+        accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.eml,.msg"
+        onChange={(e) => {
+          const list = Array.from(e.target.files ?? []);
+          const ok = list.filter((f) => f.size <= MAX_FILE_MB * 1024 * 1024);
+          const tooBig = list.length - ok.length;
+          onChange([...files, ...ok]);
+          if (tooBig > 0) {
+            alert(`${tooBig} file(s) exceeded ${MAX_FILE_MB} MB and were skipped.`);
+          }
+          if (ref.current) ref.current.value = "";
+        }}
+        style={{
+          display: "block",
+          fontSize: 13,
+          fontFamily: FONT_SANS,
+          color: C.grayDark,
+        }}
+      />
+      <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
+        Photo, video, PDF, document, spreadsheet, or email. Max {MAX_FILE_MB} MB per file.
+      </div>
+      {files.length > 0 && (
+        <ul style={{ listStyle: "none", padding: 0, margin: "8px 0 0" }}>
+          {files.map((f, i) => (
+            <li
+              key={`${f.name}-${i}`}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                background: C.grayLight,
+                padding: "6px 10px",
+                borderRadius: 4,
+                marginBottom: 4,
+                fontSize: 13,
+              }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {kindIcon(
+                  f.type.startsWith("image/")
+                    ? "image"
+                    : f.type.startsWith("video/")
+                    ? "video"
+                    : "document",
+                )}{" "}
+                {f.name} <span style={{ color: C.gray }}>({humanSize(f.size)})</span>
+              </span>
+              <button
+                onClick={() => onChange(files.filter((_, idx) => idx !== i))}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: C.orangeDark,
+                  cursor: "pointer",
+                  fontSize: 18,
+                  lineHeight: 1,
+                  padding: "0 4px",
+                }}
+                aria-label="Remove"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+async function uploadArtifacts(
+  files: File[],
+  milestoneId: string,
+  studentId: string,
+  token: string,
+  caption: string | null,
+): Promise<{ ok: number; failed: number }> {
+  let ok = 0;
+  let failed = 0;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (caption) fd.append("caption", caption);
+    fd.append("attachment_role", "primary_artifact");
+    try {
+      const r = await fetch(
+        `${API_BASE}/focms/v1/parent/students/${studentId}/milestones/${milestoneId}/artifacts?t=${encodeURIComponent(token)}`,
+        { method: "POST", body: fd },
+      );
+      if (!r.ok) {
+        failed += 1;
+      } else {
+        ok += 1;
+      }
+    } catch {
+      failed += 1;
+    }
+  }
+  return { ok, failed };
+}
+
 function CaptureFormOverlay({
   row,
   token,
@@ -467,12 +700,15 @@ function CaptureFormOverlay({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [comment, setComment] = useState("");
   const [visibility, setVisibility] = useState<"public" | "family">("public");
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>("");
 
   async function submit() {
     setSaving(true);
     setErr(null);
+    setStatus("Saving milestone...");
     try {
       const r = await fetch(
         `${API_BASE}/focms/v1/parent/students/${studentId}/milestones/capture?t=${encodeURIComponent(token)}`,
@@ -490,6 +726,16 @@ function CaptureFormOverlay({
       if (!r.ok) {
         const b = await r.text();
         throw new Error(`HTTP ${r.status}: ${b.slice(0, 200)}`);
+      }
+      const result = await r.json();
+      if (files.length > 0) {
+        setStatus(`Uploading ${files.length} file${files.length === 1 ? "" : "s"}...`);
+        const up = await uploadArtifacts(files, result.milestone_id, studentId, token, null);
+        if (up.failed > 0) {
+          setErr(`${up.failed} file(s) failed to upload, but the milestone was saved.`);
+          setSaving(false);
+          return;
+        }
       }
       onSaved();
     } catch (e) {
@@ -519,7 +765,7 @@ function CaptureFormOverlay({
           background: C.white,
           borderRadius: 8,
           padding: 32,
-          maxWidth: 520,
+          maxWidth: 560,
           width: "100%",
           fontFamily: FONT_SANS,
           maxHeight: "90vh",
@@ -599,8 +845,13 @@ function CaptureFormOverlay({
           />
         </label>
 
+        <FileInput files={files} onChange={setFiles} />
+
         <VisibilityToggle value={visibility} onChange={setVisibility} />
 
+        {status && !err && (
+          <div style={{ color: C.navy, fontSize: 13, marginBottom: 12 }}>{status}</div>
+        )}
         {err && (
           <div style={{ color: C.orangeDark, fontSize: 13, marginBottom: 16 }}>{err}</div>
         )}
@@ -663,8 +914,10 @@ function CustomEventForm({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [comment, setComment] = useState("");
   const [visibility, setVisibility] = useState<"public" | "family">("public");
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>("");
 
   async function submit() {
     if (!title.trim()) {
@@ -673,6 +926,7 @@ function CustomEventForm({
     }
     setSaving(true);
     setErr(null);
+    setStatus("Saving event...");
     try {
       const r = await fetch(
         `${API_BASE}/focms/v1/parent/students/${studentId}/milestones/custom?t=${encodeURIComponent(token)}`,
@@ -692,6 +946,16 @@ function CustomEventForm({
       if (!r.ok) {
         const b = await r.text();
         throw new Error(`HTTP ${r.status}: ${b.slice(0, 200)}`);
+      }
+      const result = await r.json();
+      if (files.length > 0) {
+        setStatus(`Uploading ${files.length} file${files.length === 1 ? "" : "s"}...`);
+        const up = await uploadArtifacts(files, result.milestone_id, studentId, token, null);
+        if (up.failed > 0) {
+          setErr(`${up.failed} file(s) failed to upload, but the event was saved.`);
+          setSaving(false);
+          return;
+        }
       }
       onSaved();
     } catch (e) {
@@ -853,8 +1117,13 @@ function CustomEventForm({
         />
       </label>
 
+      <FileInput files={files} onChange={setFiles} />
+
       <VisibilityToggle value={visibility} onChange={setVisibility} />
 
+      {status && !err && (
+        <div style={{ color: C.navy, fontSize: 13, marginBottom: 12 }}>{status}</div>
+      )}
       {err && (
         <div style={{ color: C.orangeDark, fontSize: 13, marginBottom: 16 }}>{err}</div>
       )}
@@ -895,6 +1164,256 @@ function CustomEventForm({
         >
           {saving ? "Saving..." : "Save event"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function ArtifactsModal({
+  milestoneId,
+  title,
+  token,
+  studentId,
+  onClose,
+}: {
+  milestoneId: string;
+  title: string;
+  token: string;
+  studentId: string;
+  onClose: () => void;
+}) {
+  const [artifacts, setArtifacts] = useState<ArtifactRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    setErr(null);
+    try {
+      const r = await fetch(
+        `${API_BASE}/focms/v1/parent/students/${studentId}/milestones/${milestoneId}/artifacts?t=${encodeURIComponent(token)}`,
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      setArtifacts(data.artifacts ?? []);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, [milestoneId]);
+
+  async function uploadNow() {
+    if (files.length === 0) return;
+    setUploading(true);
+    setErr(null);
+    const up = await uploadArtifacts(files, milestoneId, studentId, token, null);
+    setUploading(false);
+    setFiles([]);
+    if (up.failed > 0) {
+      setErr(`${up.failed} file(s) failed.`);
+    }
+    await load();
+  }
+
+  async function remove(attachmentId: string) {
+    if (!confirm("Remove this file?")) return;
+    try {
+      const r = await fetch(
+        `${API_BASE}/focms/v1/parent/students/${studentId}/milestones/${milestoneId}/artifacts/${attachmentId}?t=${encodeURIComponent(token)}`,
+        { method: "DELETE" },
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(32, 24, 104, 0.4)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 60,
+        padding: 24,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: C.white,
+          borderRadius: 8,
+          padding: 32,
+          maxWidth: 640,
+          width: "100%",
+          fontFamily: FONT_SANS,
+          maxHeight: "90vh",
+          overflowY: "auto",
+        }}
+      >
+        <h3
+          style={{
+            fontFamily: FONT_SERIF,
+            color: C.navy,
+            fontSize: 22,
+            fontWeight: 600,
+            margin: "0 0 4px",
+          }}
+        >
+          {title}
+        </h3>
+        <div style={{ width: 60, height: 3, background: C.orange, marginBottom: 20 }} />
+
+        {loading ? (
+          <div style={{ color: C.gray, fontSize: 14 }}>Loading files…</div>
+        ) : artifacts.length === 0 ? (
+          <div style={{ color: C.gray, fontSize: 14, marginBottom: 16 }}>
+            No files attached yet.
+          </div>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px" }}>
+            {artifacts.map((a) => (
+              <li
+                key={a.attachment_id}
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "center",
+                  padding: "10px 0",
+                  borderBottom: `1px solid ${C.grayLight}`,
+                }}
+              >
+                {a.kind === "image" ? (
+                  <img
+                    src={`${API_BASE}/focms/v1/parent/artifacts/${a.artifact_id}/content?t=${encodeURIComponent(token)}`}
+                    alt={a.original_filename}
+                    style={{
+                      width: 56,
+                      height: 56,
+                      objectFit: "cover",
+                      borderRadius: 4,
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 4,
+                      background: C.grayLight,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 28,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {kindIcon(a.kind)}
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  
+                    href={`${API_BASE}/focms/v1/parent/artifacts/${a.artifact_id}/content?t=${encodeURIComponent(token)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      color: C.navy,
+                      fontWeight: 600,
+                      fontSize: 14,
+                      textDecoration: "none",
+                      display: "block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {a.original_filename}
+                  </a>
+                  <div style={{ color: C.gray, fontSize: 12 }}>
+                    {humanSize(a.byte_size)} · {a.visibility}
+                  </div>
+                </div>
+                <button
+                  onClick={() => remove(a.attachment_id)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: C.orangeDark,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    fontFamily: FONT_SANS,
+                  }}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div
+          style={{
+            borderTop: `2px solid ${C.grayLight}`,
+            paddingTop: 20,
+          }}
+        >
+          <FileInput files={files} onChange={setFiles} />
+          {err && (
+            <div style={{ color: C.orangeDark, fontSize: 13, marginBottom: 12 }}>{err}</div>
+          )}
+          <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+            <button
+              onClick={onClose}
+              disabled={uploading}
+              style={{
+                background: "transparent",
+                color: C.gray,
+                border: "none",
+                padding: "10px 18px",
+                cursor: "pointer",
+                fontFamily: FONT_SANS,
+                fontSize: 14,
+              }}
+            >
+              Close
+            </button>
+            {files.length > 0 && (
+              <button
+                onClick={uploadNow}
+                disabled={uploading}
+                style={{
+                  background: C.orange,
+                  color: C.white,
+                  border: "none",
+                  borderRadius: 4,
+                  padding: "10px 18px",
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  fontSize: 13,
+                  cursor: uploading ? "wait" : "pointer",
+                  fontFamily: FONT_SANS,
+                  opacity: uploading ? 0.6 : 1,
+                }}
+              >
+                {uploading ? "Uploading..." : `Upload ${files.length}`}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
