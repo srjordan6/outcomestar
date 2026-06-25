@@ -87,10 +87,10 @@ function humanSize(bytes: number) {
 }
 
 function kindIcon(kind: string) {
-  if (kind === "image") return "🖼";
-  if (kind === "video") return "🎬";
-  if (kind === "document") return "📄";
-  return "📎";
+  if (kind === "image") return "IMG";
+  if (kind === "video") return "VID";
+  if (kind === "document") return "DOC";
+  return "FILE";
 }
 
 export function MilestoneTracker({
@@ -621,13 +621,13 @@ function FileInput({
               }}
             >
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {kindIcon(
+                [{kindIcon(
                   f.type.startsWith("image/")
                     ? "image"
                     : f.type.startsWith("video/")
                     ? "video"
                     : "document",
-                )}{" "}
+                )}]{" "}
                 {f.name} <span style={{ color: C.gray }}>({humanSize(f.size)})</span>
               </span>
               <button
@@ -830,7 +830,7 @@ function CaptureFormOverlay({
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={3}
-            placeholder="A short note about what happened, who was there, what it meant…"
+            placeholder="A short note about what happened, who was there, what it meant..."
             style={{
               display: "block",
               width: "100%",
@@ -1101,7 +1101,7 @@ function CustomEventForm({
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           rows={3}
-          placeholder="A short note about what happened, who was there, what it meant…"
+          placeholder="A short note about what happened, who was there, what it meant..."
           style={{
             display: "block",
             width: "100%",
@@ -1277,90 +1277,95 @@ function ArtifactsModal({
         <div style={{ width: 60, height: 3, background: C.orange, marginBottom: 20 }} />
 
         {loading ? (
-          <div style={{ color: C.gray, fontSize: 14 }}>Loading files…</div>
+          <div style={{ color: C.gray, fontSize: 14 }}>Loading files...</div>
         ) : artifacts.length === 0 ? (
           <div style={{ color: C.gray, fontSize: 14, marginBottom: 16 }}>
             No files attached yet.
           </div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px" }}>
-            {artifacts.map((a) => (
-              <li
-                key={a.attachment_id}
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "center",
-                  padding: "10px 0",
-                  borderBottom: `1px solid ${C.grayLight}`,
-                }}
-              >
-                {a.kind === "image" ? (
-                  <img
-                    src={`${API_BASE}/focms/v1/parent/artifacts/${a.artifact_id}/content?t=${encodeURIComponent(token)}`}
-                    alt={a.original_filename}
-                    style={{
-                      width: 56,
-                      height: 56,
-                      objectFit: "cover",
-                      borderRadius: 4,
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 4,
-                      background: C.grayLight,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 28,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {kindIcon(a.kind)}
-                  </div>
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  
-                    href={`${API_BASE}/focms/v1/parent/artifacts/${a.artifact_id}/content?t=${encodeURIComponent(token)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      color: C.navy,
-                      fontWeight: 600,
-                      fontSize: 14,
-                      textDecoration: "none",
-                      display: "block",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {a.original_filename}
-                  </a>
-                  <div style={{ color: C.gray, fontSize: 12 }}>
-                    {humanSize(a.byte_size)} · {a.visibility}
-                  </div>
-                </div>
-                <button
-                  onClick={() => remove(a.attachment_id)}
+            {artifacts.map((a) => {
+              const contentUrl = `${API_BASE}/focms/v1/parent/artifacts/${a.artifact_id}/content?t=${encodeURIComponent(token)}`;
+              return (
+                <li
+                  key={a.attachment_id}
                   style={{
-                    background: "transparent",
-                    border: "none",
-                    color: C.orangeDark,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    fontFamily: FONT_SANS,
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "center",
+                    padding: "10px 0",
+                    borderBottom: `1px solid ${C.grayLight}`,
                   }}
                 >
-                  Remove
-                </button>
-              </li>
-            ))}
+                  {a.kind === "image" ? (
+                    <img
+                      src={contentUrl}
+                      alt={a.original_filename}
+                      style={{
+                        width: 56,
+                        height: 56,
+                        objectFit: "cover",
+                        borderRadius: 4,
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 4,
+                        background: C.grayLight,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: C.navy,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {kindIcon(a.kind)}
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    
+                      href={contentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        color: C.navy,
+                        fontWeight: 600,
+                        fontSize: 14,
+                        textDecoration: "none",
+                        display: "block",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {a.original_filename}
+                    </a>
+                    <div style={{ color: C.gray, fontSize: 12 }}>
+                      {humanSize(a.byte_size)} · {a.visibility}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => remove(a.attachment_id)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: C.orangeDark,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      fontFamily: FONT_SANS,
+                    }}
+                  >
+                    Remove
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
 
