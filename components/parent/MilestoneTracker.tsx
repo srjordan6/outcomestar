@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-// SRJ brand tokens — inline until globals.css/fonts.ts are set up next session
 const C = {
   navy: "#201868",
   orange: "#F07800",
@@ -86,7 +85,6 @@ export function MilestoneTracker({
   });
   const [captureFor, setCaptureFor] = useState<CatalogRow | null>(null);
   const [showCustomForm, setShowCustomForm] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   async function loadPicker() {
     setLoading(true);
@@ -127,14 +125,12 @@ export function MilestoneTracker({
   }
   if (!data) return null;
 
-  // Group catalog by age_band, preserving the order they come back in
   const groups: Record<string, CatalogRow[]> = {};
   for (const row of data.catalog) {
     if (!groups[row.age_band]) groups[row.age_band] = [];
     groups[row.age_band].push(row);
   }
   const groupOrder = Object.keys(AGE_BAND_LABELS).filter((k) => groups[k]);
-
   const achievedCount = data.catalog.filter((r) => r.status === "achieved").length;
 
   return (
@@ -148,7 +144,6 @@ export function MilestoneTracker({
       }}
     >
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
-        {/* Header */}
         <header style={{ marginBottom: 32 }}>
           <h1
             style={{
@@ -162,15 +157,7 @@ export function MilestoneTracker({
           >
             Millstones &amp; Milestones
           </h1>
-          <div
-            style={{
-              width: 80,
-              height: 3,
-              background: C.orange,
-              marginTop: 8,
-              marginBottom: 16,
-            }}
-          />
+          <div style={{ width: 80, height: 3, background: C.orange, marginTop: 8, marginBottom: 16 }} />
           <p style={{ color: C.gray, fontSize: 15, margin: 0 }}>
             {achievedCount} of {data.catalog_count} catalog milestones logged
             {data.custom_count > 0 ? `, ${data.custom_count} custom event${data.custom_count === 1 ? "" : "s"}` : ""}
@@ -178,7 +165,6 @@ export function MilestoneTracker({
           </p>
         </header>
 
-        {/* Add custom event CTA */}
         <button
           onClick={() => setShowCustomForm(true)}
           style={{
@@ -211,7 +197,6 @@ export function MilestoneTracker({
           />
         )}
 
-        {/* Custom events already logged */}
         {data.custom_events.length > 0 && (
           <section style={{ marginBottom: 40 }}>
             <h2
@@ -241,14 +226,15 @@ export function MilestoneTracker({
                   {evt.custom_category ? ` · ${evt.custom_category}` : ""}
                 </div>
                 {evt.event_notes && (
-                  <div style={{ color: C.grayDark, fontSize: 14, marginTop: 8 }}>{evt.event_notes}</div>
+                  <div style={{ color: C.grayDark, fontSize: 14, marginTop: 8 }}>
+                    {evt.event_notes}
+                  </div>
                 )}
               </div>
             ))}
           </section>
         )}
 
-        {/* Catalog groups by age_band */}
         {groupOrder.map((band) => {
           const rows = groups[band];
           const bandAchieved = rows.filter((r) => r.status === "achieved").length;
@@ -324,13 +310,7 @@ export function MilestoneTracker({
   );
 }
 
-function MilestoneCard({
-  row,
-  onCapture,
-}: {
-  row: CatalogRow;
-  onCapture: () => void;
-}) {
+function MilestoneCard({ row, onCapture }: { row: CatalogRow; onCapture: () => void }) {
   const s = STATUS_LABELS[row.status];
   return (
     <div
@@ -364,7 +344,7 @@ function MilestoneCard({
           <div style={{ color: C.gray, fontSize: 13, marginTop: 2 }}>{row.description}</div>
         )}
         {row.first_hit && (
-          <div style={{ color: C.navy, fontSize: 12, marginTop: 4 }}>Logged: {row.first_hit}</div>
+          <div style={{ color: C.navy, fontSize: 12, marginTop: 4 }}>Happened: {row.first_hit}</div>
         )}
       </div>
       {row.status !== "achieved" && (
@@ -390,6 +370,87 @@ function MilestoneCard({
   );
 }
 
+function VisibilityToggle({
+  value,
+  onChange,
+}: {
+  value: "public" | "family";
+  onChange: (v: "public" | "family") => void;
+}) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <span
+        style={{
+          color: C.navy,
+          fontSize: 12,
+          fontWeight: 500,
+          letterSpacing: "0.05em",
+          textTransform: "uppercase",
+          display: "block",
+          marginBottom: 8,
+        }}
+      >
+        Who can see this?
+      </span>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          padding: "10px 12px",
+          border: `1.5px solid ${value === "public" ? C.orange : C.grayLight}`,
+          borderRadius: 4,
+          marginBottom: 6,
+          cursor: "pointer",
+          background: value === "public" ? "#FFF7EE" : C.white,
+        }}
+      >
+        <input
+          type="radio"
+          checked={value === "public"}
+          onChange={() => onChange("public")}
+          style={{ marginTop: 3 }}
+        />
+        <span>
+          <span style={{ fontWeight: 600, color: C.navy, fontSize: 14 }}>
+            Show on outcomestar.app/north-star
+          </span>
+          <span style={{ display: "block", color: C.gray, fontSize: 12, marginTop: 2 }}>
+            Public — anyone with the URL can see this milestone, date, and your comment.
+          </span>
+        </span>
+      </label>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          padding: "10px 12px",
+          border: `1.5px solid ${value === "family" ? C.navy : C.grayLight}`,
+          borderRadius: 4,
+          cursor: "pointer",
+          background: value === "family" ? "#F4F4F8" : C.white,
+        }}
+      >
+        <input
+          type="radio"
+          checked={value === "family"}
+          onChange={() => onChange("family")}
+          style={{ marginTop: 3 }}
+        />
+        <span>
+          <span style={{ fontWeight: 600, color: C.navy, fontSize: 14 }}>
+            Family only
+          </span>
+          <span style={{ display: "block", color: C.gray, fontSize: 12, marginTop: 2 }}>
+            Private — only visible inside the parent portal.
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+}
+
 function CaptureFormOverlay({
   row,
   token,
@@ -404,7 +465,8 @@ function CaptureFormOverlay({
   onSaved: () => void;
 }) {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [notes, setNotes] = useState("");
+  const [comment, setComment] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "family">("public");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -420,8 +482,8 @@ function CaptureFormOverlay({
           body: JSON.stringify({
             milestone_code: row.code,
             event_date: date,
-            event_notes: notes || null,
-            visibility: "family",
+            event_notes: comment || null,
+            visibility,
           }),
         },
       );
@@ -457,9 +519,11 @@ function CaptureFormOverlay({
           background: C.white,
           borderRadius: 8,
           padding: 32,
-          maxWidth: 480,
+          maxWidth: 520,
           width: "100%",
           fontFamily: FONT_SANS,
+          maxHeight: "90vh",
+          overflowY: "auto",
         }}
       >
         <h3
@@ -473,9 +537,7 @@ function CaptureFormOverlay({
         >
           {row.title}
         </h3>
-        <div
-          style={{ width: 60, height: 3, background: C.orange, marginBottom: 20 }}
-        />
+        <div style={{ width: 60, height: 3, background: C.orange, marginBottom: 20 }} />
 
         <label style={{ display: "block", marginBottom: 16 }}>
           <span
@@ -487,7 +549,7 @@ function CaptureFormOverlay({
               textTransform: "uppercase",
             }}
           >
-            Date
+            Date it happened
           </span>
           <input
             type="date"
@@ -506,7 +568,7 @@ function CaptureFormOverlay({
           />
         </label>
 
-        <label style={{ display: "block", marginBottom: 20 }}>
+        <label style={{ display: "block", marginBottom: 16 }}>
           <span
             style={{
               color: C.navy,
@@ -516,12 +578,13 @@ function CaptureFormOverlay({
               textTransform: "uppercase",
             }}
           >
-            Notes (optional)
+            Public comment (optional)
           </span>
           <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
             rows={3}
+            placeholder="A short note about what happened, who was there, what it meant…"
             style={{
               display: "block",
               width: "100%",
@@ -535,6 +598,8 @@ function CaptureFormOverlay({
             }}
           />
         </label>
+
+        <VisibilityToggle value={visibility} onChange={setVisibility} />
 
         {err && (
           <div style={{ color: C.orangeDark, fontSize: 13, marginBottom: 16 }}>{err}</div>
@@ -596,7 +661,8 @@ function CustomEventForm({
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [notes, setNotes] = useState("");
+  const [comment, setComment] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "family">("public");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -617,8 +683,8 @@ function CustomEventForm({
             custom_title: title.trim(),
             custom_category: category.trim() || null,
             event_date: date,
-            event_notes: notes || null,
-            visibility: "family",
+            event_notes: comment || null,
+            visibility,
             add_to_catalog: false,
           }),
         },
@@ -735,7 +801,7 @@ function CustomEventForm({
             textTransform: "uppercase",
           }}
         >
-          Date
+          Date it happened
         </span>
         <input
           type="date"
@@ -755,7 +821,7 @@ function CustomEventForm({
         />
       </label>
 
-      <label style={{ display: "block", marginBottom: 20 }}>
+      <label style={{ display: "block", marginBottom: 16 }}>
         <span
           style={{
             color: C.navy,
@@ -765,12 +831,13 @@ function CustomEventForm({
             textTransform: "uppercase",
           }}
         >
-          Notes (optional)
+          Public comment (optional)
         </span>
         <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
           rows={3}
+          placeholder="A short note about what happened, who was there, what it meant…"
           style={{
             display: "block",
             width: "100%",
@@ -785,6 +852,8 @@ function CustomEventForm({
           }}
         />
       </label>
+
+      <VisibilityToggle value={visibility} onChange={setVisibility} />
 
       {err && (
         <div style={{ color: C.orangeDark, fontSize: 13, marginBottom: 16 }}>{err}</div>
