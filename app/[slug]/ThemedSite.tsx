@@ -1,8 +1,9 @@
 /**
- * ThemedSite.tsx â token-driven renderer for wizard-published family sites.
- * Theme sprint 2026-07-06: one component renders all 30 catalog themes from
- * GenericThemeTokens (lib/genericThemes). Four layout archetypes; every
- * visual decision comes from tokens, never from code branches per theme.
+ * ThemedSite.tsx — v2 (hero photo + richer visual pass, 2026-07-06).
+ * One token-driven component renders all 30 catalog themes. v2 adds:
+ *   - hero photo slot (site.hero_url) framed per layout archetype
+ *   - stat strip (class year, band, section count)
+ *   - accent flourishes: numbered chips, motif band, layered header
  * Accepts pre-translated strings for second-language sites.
  */
 
@@ -50,60 +51,122 @@ export function ThemedSite({
 
   const isPoster = theme.layout === "poster";
   const isDashboard = theme.layout === "dashboard";
-  const isCards = theme.layout === "cards" || isDashboard;
+  const hero = (site as PublicSiteConfig & { hero_url?: string | null }).hero_url ?? null;
 
-  const pageStyle: React.CSSProperties = {
-    background: theme.bg,
-    color: theme.ink,
-    minHeight: "100vh",
-    fontFamily: `'${bodyFont}', system-ui, sans-serif`,
-  };
-  const motifStyle: React.CSSProperties = theme.motif
-    ? { backgroundImage: theme.motif, backgroundSize: theme.motif.includes("gradient(9") ? "28px 28px" : "26px 26px" }
-    : {};
+  const photoFrame: React.CSSProperties =
+    theme.layout === "editorial"
+      ? { borderRadius: 10, border: `1px solid ${theme.border}`, boxShadow: `8px 8px 0 ${theme.accent}22` }
+      : theme.layout === "dashboard"
+        ? { borderRadius: 14, border: `2px solid ${theme.accent}`, boxShadow: `0 0 24px ${theme.accent}44` }
+        : theme.layout === "poster"
+          ? { borderRadius: 0, border: `6px solid ${theme.ink}` }
+          : { borderRadius: "50%", border: `5px solid ${theme.accent}` };
 
   return (
-    <div style={{ ...pageStyle, ...motifStyle }}>
+    <div
+      style={{
+        background: theme.bg,
+        color: theme.ink,
+        minHeight: "100vh",
+        fontFamily: `'${bodyFont}', system-ui, sans-serif`,
+        ...(theme.motif ? { backgroundImage: theme.motif, backgroundSize: "26px 26px" } : {}),
+      }}
+    >
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link rel="stylesheet" href={fontHref} />
       <main className="mx-auto max-w-page px-6 pt-12 pb-24">
+        {/* accent band */}
+        <div style={{ height: 6, background: theme.accent, borderRadius: 3, marginBottom: 40 }} />
+
         <header
           style={{
-            borderBottom: `3px solid ${theme.accent}`,
-            paddingBottom: "2rem",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 32,
+            alignItems: "center",
+            flexDirection: isPoster ? "column" : "row",
             textAlign: isPoster ? "center" : "left",
+            borderBottom: `3px solid ${theme.accent}`,
+            paddingBottom: 32,
           }}
         >
-          <p
-            style={{
-              color: theme.accent,
-              fontSize: 12,
-              letterSpacing: "0.28em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-            }}
-          >
-            {strings.bandLabel}
-            {langBadge ? ` Â· ${langBadge}` : ""}
-          </p>
-          <h1
-            style={{
-              fontFamily: `'${displayFont}', serif`,
-              fontSize: isPoster ? "clamp(64px, 14vw, 150px)" : "clamp(44px, 8vw, 84px)",
-              lineHeight: 0.95,
-              marginTop: 12,
-              fontWeight: 700,
-            }}
-          >
-            {site.student_first_name}
-          </h1>
-          {strings.classOf ? (
-            <p style={{ color: theme.soft, marginTop: 14, fontSize: 18 }}>{strings.classOf}</p>
-          ) : null}
-          <p style={{ color: theme.soft, marginTop: 6, fontSize: 13 }}>{theme.headerNote}</p>
+          {hero ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={hero}
+              alt={site.student_first_name}
+              width={200}
+              height={200}
+              style={{ width: 200, height: 200, objectFit: "cover", flexShrink: 0, ...photoFrame }}
+            />
+          ) : (
+            <div
+              aria-hidden
+              style={{
+                width: 200,
+                height: 200,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: `'${displayFont}', serif`,
+                fontSize: 96,
+                fontWeight: 700,
+                color: theme.accent,
+                background: theme.card,
+                ...photoFrame,
+              }}
+            >
+              {site.student_first_name.slice(0, 1)}
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <p
+              style={{
+                color: theme.accent,
+                fontSize: 12,
+                letterSpacing: "0.28em",
+                textTransform: "uppercase",
+                fontWeight: 600,
+              }}
+            >
+              {strings.bandLabel}
+              {langBadge ? ` · ${langBadge}` : ""}
+            </p>
+            <h1
+              style={{
+                fontFamily: `'${displayFont}', serif`,
+                fontSize: isPoster ? "clamp(60px, 12vw, 130px)" : "clamp(42px, 7vw, 78px)",
+                lineHeight: 0.95,
+                marginTop: 10,
+                fontWeight: 700,
+              }}
+            >
+              {site.student_first_name}
+            </h1>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16, justifyContent: isPoster ? "center" : "flex-start" }}>
+              {[strings.classOf, theme.headerNote, `${strings.sections.length} ${strings.sectionsHeading.toLowerCase()}`]
+                .filter(Boolean)
+                .map((chip) => (
+                  <span
+                    key={chip}
+                    style={{
+                      background: theme.card,
+                      border: `1px solid ${theme.border}`,
+                      color: theme.soft,
+                      borderRadius: 999,
+                      padding: "6px 14px",
+                      fontSize: 13,
+                    }}
+                  >
+                    {chip}
+                  </span>
+                ))}
+            </div>
+          </div>
         </header>
 
-        <section style={{ marginTop: 56 }}>
+        <section style={{ marginTop: 52 }}>
           <h2
             style={{
               fontFamily: `'${displayFont}', serif`,
@@ -119,7 +182,7 @@ export function ThemedSite({
               marginTop: 24,
               display: "grid",
               gap: 16,
-              gridTemplateColumns: isCards ? "repeat(auto-fit, minmax(260px, 1fr))" : "1fr",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             }}
           >
             {strings.sections.map((s, i) => (
@@ -128,20 +191,33 @@ export function ThemedSite({
                 style={{
                   background: theme.card,
                   border: `1px solid ${theme.border}`,
-                  borderRadius: theme.layout === "cards" ? 14 : isDashboard ? 10 : 6,
+                  borderTop: `4px solid ${theme.accent}`,
+                  borderRadius: theme.layout === "cards" ? 16 : isDashboard ? 10 : 6,
                   padding: "20px 22px",
-                  borderLeft: theme.layout === "editorial" ? `4px solid ${theme.accent}` : undefined,
                 }}
               >
-                <p style={{ color: theme.accent, fontSize: 11, fontFamily: "monospace" }}>
-                  {String(i + 1).padStart(2, "0")}
-                </p>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 30,
+                    height: 30,
+                    borderRadius: "50%",
+                    background: theme.accent,
+                    color: isDashboard || isPoster ? theme.ink : "#fff",
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  {i + 1}
+                </span>
                 <h3
                   style={{
                     fontFamily: `'${displayFont}', serif`,
                     fontSize: 20,
                     fontWeight: 600,
-                    marginTop: 4,
+                    marginTop: 10,
                   }}
                 >
                   {s.title}
@@ -159,9 +235,14 @@ export function ThemedSite({
             paddingTop: 24,
             color: theme.soft,
             fontSize: 12,
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
           }}
         >
           <p>{strings.footer}</p>
+          <p style={{ color: theme.accent, fontWeight: 600 }}>outcomestar</p>
         </footer>
       </main>
     </div>

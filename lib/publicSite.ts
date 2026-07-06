@@ -8,6 +8,7 @@ const API = process.env.FOCMS_API_URL ?? "https://focms-api.onrender.com";
 
 export type PublicSiteConfig = {
   slug: string;
+  hero_url?: string | null;
   student_first_name: string;
   graduation_year: number | null;
   age_band: "band_1_5" | "band_6_12" | "band_13_18";
