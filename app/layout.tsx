@@ -26,7 +26,10 @@ export default function RootLayout({
               OutcomeStar
             </span>
             <span className="text-xs text-ink-fade">
-              © {new Date().getFullYear()} SRJ Consulting Services
+              © {new Date().getFullYear()}{" "}
+              <a href="https://srjconsultingservices.com" className="underline">
+                SRJ Consulting Services LLC
+              </a>
             </span>
           </div>
         </footer>

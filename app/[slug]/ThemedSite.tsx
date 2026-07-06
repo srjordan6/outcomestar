@@ -36,11 +36,13 @@ export function ThemedSite({
   theme,
   strings,
   langBadge,
+  currentLang,
 }: {
   site: PublicSiteConfig;
   theme: GenericThemeTokens;
   strings: ThemedStrings;
   langBadge?: string | null;
+  currentLang?: string;
 }) {
   const [displayFont, bodyFont] = theme.fonts;
   const fontHref = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
@@ -75,8 +77,31 @@ export function ThemedSite({
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link rel="stylesheet" href={fontHref} />
       <main className="mx-auto max-w-page px-6 pt-12 pb-24">
-        {/* accent band */}
-        <div style={{ height: 6, background: theme.accent, borderRadius: 3, marginBottom: 40 }} />
+        {/* accent band + language selector */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 40 }}>
+          <div style={{ height: 6, background: theme.accent, borderRadius: 3, flex: 1 }} />
+          {site.language_secondary ? (
+            <nav style={{ display: "flex", gap: 8, fontSize: 12, fontWeight: 700 }}>
+              {[site.language_primary || "en", site.language_secondary].map((l) => (
+                <a
+                  key={l}
+                  href={l === (site.language_primary || "en") ? `/${site.slug}` : `/${site.slug}/${l}`}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: 999,
+                    textDecoration: "none",
+                    letterSpacing: "0.08em",
+                    background: (currentLang ?? site.language_primary ?? "en") === l ? theme.accent : theme.card,
+                    color: (currentLang ?? site.language_primary ?? "en") === l ? "#fff" : theme.soft,
+                    border: `1px solid ${theme.border}`,
+                  }}
+                >
+                  {l.toUpperCase()}
+                </a>
+              ))}
+            </nav>
+          ) : null}
+        </div>
 
         <header
           style={{
@@ -97,7 +122,7 @@ export function ThemedSite({
               alt={site.student_first_name}
               width={200}
               height={200}
-              style={{ width: 200, height: 200, objectFit: "cover", flexShrink: 0, ...photoFrame }}
+              style={{ width: 200, height: 200, objectFit: "cover", objectPosition: "center 15%", flexShrink: 0, ...photoFrame }}
             />
           ) : (
             <div
@@ -242,7 +267,18 @@ export function ThemedSite({
           }}
         >
           <p>{strings.footer}</p>
-          <p style={{ color: theme.accent, fontWeight: 600 }}>outcomestar</p>
+          <p style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <a href="https://outcomestar.app" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: theme.accent, fontWeight: 700, textDecoration: "none" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://outcomestar.app/outcomestar_logo_primary.png" alt="outcomestar" style={{ height: 26, background: "#fff", borderRadius: 6, padding: "2px 6px" }} />
+            </a>
+            <span>
+              &copy; 2026{" "}
+              <a href="https://srjconsultingservices.com" style={{ color: theme.soft, textDecoration: "underline" }}>
+                SRJ Consulting Services LLC
+              </a>
+            </span>
+          </p>
         </footer>
       </main>
     </div>

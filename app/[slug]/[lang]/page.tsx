@@ -1,5 +1,5 @@
 /**
- * app/[slug]/[lang]/page.tsx â second-language family site (theme sprint).
+ * app/[slug]/[lang]/page.tsx — second-language family site (theme sprint).
  * Live only when the family configured that language as language_secondary
  * (or it matches language_primary). UI strings are machine-translated via
  * lib/translate; falls back to English text if translation is unavailable.
@@ -61,5 +61,5 @@ export default async function LangSitePage({
   };
 
   if (!theme) return <GenericSite site={site!} />;
-  return <ThemedSite site={site!} theme={theme} strings={strings} langBadge={lang.toUpperCase()} />;
+  return <ThemedSite site={site!} theme={theme} strings={strings} langBadge={lang.toUpperCase()} currentLang={lang} />;
 }
