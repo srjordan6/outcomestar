@@ -9,6 +9,7 @@
 
 import type { PublicSiteConfig } from "@/lib/publicSite";
 import type { GenericThemeTokens } from "@/lib/genericThemes";
+import { LanguageSelector } from "./LanguageSelector";
 
 export interface ThemedStrings {
   classOf: string;
@@ -80,27 +81,7 @@ export function ThemedSite({
         {/* accent band + language selector */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 40 }}>
           <div style={{ height: 6, background: theme.accent, borderRadius: 3, flex: 1 }} />
-          {site.language_secondary ? (
-            <nav style={{ display: "flex", gap: 8, fontSize: 12, fontWeight: 700 }}>
-              {[site.language_primary || "en", site.language_secondary].map((l) => (
-                <a
-                  key={l}
-                  href={l === (site.language_primary || "en") ? `/${site.slug}` : `/${site.slug}/${l}`}
-                  style={{
-                    padding: "4px 12px",
-                    borderRadius: 999,
-                    textDecoration: "none",
-                    letterSpacing: "0.08em",
-                    background: (currentLang ?? site.language_primary ?? "en") === l ? theme.accent : theme.card,
-                    color: (currentLang ?? site.language_primary ?? "en") === l ? "#fff" : theme.soft,
-                    border: `1px solid ${theme.border}`,
-                  }}
-                >
-                  {l.toUpperCase()}
-                </a>
-              ))}
-            </nav>
-          ) : null}
+          <LanguageSelector slug={site.slug} current={currentLang ?? site.language_primary ?? "en"} theme={theme} />
         </div>
 
         <header

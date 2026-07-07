@@ -12,6 +12,7 @@ import { resolveGenericTheme, GENERIC_THEMES } from "@/lib/genericThemes";
 import { ThemedSite, defaultStrings } from "../ThemedSite";
 import { GenericSite } from "../GenericSite";
 import { translateBatch } from "@/lib/translate";
+import { GOOGLE_LANGUAGE_CODES } from "@/lib/googleLanguages";
 
 export async function generateMetadata({
   params,
@@ -35,7 +36,7 @@ export default async function LangSitePage({
   const site = await getPublicSite(params.slug);
   if (!site) notFound();
   const lang = params.lang;
-  if (lang !== site!.language_secondary && lang !== site!.language_primary) notFound();
+  if (!GOOGLE_LANGUAGE_CODES.has(lang) || lang === "en") notFound();
 
   const theme =
     resolveGenericTheme(site!.theme?.key) ??
