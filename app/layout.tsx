@@ -20,20 +20,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen">
         {children}
-        <footer className="mt-24 border-t border-rule">
-          <div className="mx-auto max-w-page px-6 py-8 flex items-baseline justify-between">
-            <span className="font-display font-semibold tracking-tight">
-              OutcomeStar
-            </span>
-            <span className="text-xs text-ink-fade">
-              © {new Date().getFullYear()}{" "}
-              <a href="https://srjconsultingservices.com" className="underline">
-                SRJ Consulting Services LLC
-              </a>
-            </span>
-          </div>
-        </footer>
-      </body>
+        </body>
     </html>
   );
 }

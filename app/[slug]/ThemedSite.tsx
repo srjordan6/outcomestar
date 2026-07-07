@@ -242,24 +242,24 @@ export function ThemedSite({
             color: theme.soft,
             fontSize: 12,
             display: "flex",
-            justifyContent: "space-between",
-            gap: 12,
+            alignItems: "center",
+            gap: 20,
             flexWrap: "wrap",
           }}
         >
-          <p>{strings.footer}</p>
-          <p style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <a href="https://outcomestar.app" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: theme.accent, fontWeight: 700, textDecoration: "none" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://outcomestar.app/outcomestar_logo_primary.png" alt="outcomestar" style={{ height: 26, background: "#fff", borderRadius: 6, padding: "2px 6px" }} />
-            </a>
-            <span>
+          <a href="https://outcomestar.app" style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://outcomestar.app/outcomestar_logo_primary.png" alt="outcomestar" style={{ height: 56, background: "#fff", borderRadius: 8, padding: "6px 12px" }} />
+          </a>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <p>{strings.footer}</p>
+            <p style={{ marginTop: 4 }}>
               &copy; 2026{" "}
               <a href="https://srjconsultingservices.com" style={{ color: theme.soft, textDecoration: "underline" }}>
                 SRJ Consulting Services LLC
               </a>
-            </span>
-          </p>
+            </p>
+          </div>
         </footer>
       </main>
     </div>
