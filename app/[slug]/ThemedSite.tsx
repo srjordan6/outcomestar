@@ -9,6 +9,7 @@
 
 import type { PublicSiteConfig } from "@/lib/publicSite";
 import type { GenericThemeTokens } from "@/lib/genericThemes";
+import { formatLatest, type LatestActivity } from "@/lib/latestActivity";
 import { LanguageSelector } from "./LanguageSelector";
 
 export interface ThemedStrings {
@@ -38,12 +39,14 @@ export function ThemedSite({
   strings,
   langBadge,
   currentLang,
+  latest,
 }: {
   site: PublicSiteConfig;
   theme: GenericThemeTokens;
   strings: ThemedStrings;
   langBadge?: string | null;
   currentLang?: string;
+  latest?: LatestActivity | null;
 }) {
   const [displayFont, bodyFont] = theme.fonts;
   const fontHref = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
@@ -79,10 +82,13 @@ export function ThemedSite({
       <link rel="stylesheet" href={fontHref} />
       <main className="mx-auto max-w-page px-6 pt-12 pb-24">
         {/* accent band + language selector */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 40 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
           <div style={{ height: 6, background: theme.accent, borderRadius: 3, flex: 1 }} />
           <LanguageSelector theme={theme} />
         </div>
+        <p style={{ color: theme.accent, fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, marginBottom: 32 }}>
+          {formatLatest(latest ?? null)}
+        </p>
 
         <header
           style={{
@@ -192,14 +198,19 @@ export function ThemedSite({
             }}
           >
             {strings.sections.map((s, i) => (
-              <div
+              <a
                 key={s.code}
+                href={`/${site.slug}/section/${s.code}`}
                 style={{
                   background: theme.card,
                   border: `1px solid ${theme.border}`,
                   borderTop: `4px solid ${theme.accent}`,
                   borderRadius: theme.layout === "cards" ? 16 : isDashboard ? 10 : 6,
                   padding: "20px 22px",
+                  color: theme.ink,
+                  textDecoration: "none",
+                  display: "block",
+                  transition: "transform 120ms ease, box-shadow 120ms ease",
                 }}
               >
                 <span
@@ -229,7 +240,7 @@ export function ThemedSite({
                   {s.title}
                 </h3>
                 <p style={{ color: theme.soft, marginTop: 8, fontSize: 14 }}>{strings.growNote}</p>
-              </div>
+              </a>
             ))}
           </div>
         </section>
@@ -242,6 +253,7 @@ export function ThemedSite({
             color: theme.soft,
             fontSize: 12,
             display: "flex",
+            justifyContent: "space-between",
             alignItems: "center",
             gap: 20,
             flexWrap: "wrap",
@@ -251,15 +263,12 @@ export function ThemedSite({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="https://outcomestar.app/outcomestar_logo_primary.png" alt="outcomestar" style={{ height: 56, background: "#fff", borderRadius: 8, padding: "6px 12px" }} />
           </a>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <p>{strings.footer}</p>
-            <p style={{ marginTop: 4 }}>
-              &copy; 2026{" "}
-              <a href="https://srjconsultingservices.com" style={{ color: theme.soft, textDecoration: "underline" }}>
-                SRJ Consulting Services LLC
-              </a>
-            </p>
-          </div>
+          <p>
+            &copy; 2026{" "}
+            <a href="https://srjconsultingservices.com" style={{ color: theme.soft, textDecoration: "underline" }}>
+              SRJ Consulting Services LLC
+            </a>
+          </p>
         </footer>
       </main>
     </div>

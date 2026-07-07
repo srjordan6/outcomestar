@@ -6,6 +6,7 @@ import { getPublicSite } from "@/lib/publicSite";
 import { GenericSite } from "./GenericSite";
 import { ThemedSite, defaultStrings } from "./ThemedSite";
 import { resolveGenericTheme } from "@/lib/genericThemes";
+import { getLatest } from "@/lib/latestActivity";
 import { STROKE_GROUPS } from "@/lib/events";
 import { PowerIndexHero } from "./PowerIndexHero";
 import { EventTable } from "./EventTable";
@@ -29,7 +30,7 @@ export async function generateMetadata({
   }
   return {
     title: student.displayName,
-    description: `${student.displayName} Â· Class of ${student.classYear} Â· Athletic and academic record.`,
+    description: `${student.displayName} · Class of ${student.classYear} · Athletic and academic record.`,
   };
 }
 
@@ -45,8 +46,9 @@ export default async function StudentPage({
     const site = await getPublicSite(params.slug);
     if (!site) notFound();
     const theme = resolveGenericTheme(site!.theme?.key);
+    const latest = await getLatest(site!.slug);
     if (theme) {
-      return <ThemedSite site={site!} theme={theme} strings={defaultStrings(site!)} />;
+      return <ThemedSite site={site!} theme={theme} strings={defaultStrings(site!)} latest={latest} />;
     }
     return <GenericSite site={site!} />;
   }
@@ -74,7 +76,7 @@ export default async function StudentPage({
           href="/"
           className="eyebrow hover:text-accent transition-colors"
         >
-          â OutcomeStar
+          ← OutcomeStar
         </Link>
       </nav>
 
@@ -85,15 +87,15 @@ export default async function StudentPage({
           {student.displayName}
         </h1>
         <p className="mt-4 text-ink-soft text-lg">
-          Class of <span className="font-mono">{student.classYear}</span> Â·
-          Distance &amp; Breaststroke Â·{" "}
+          Class of <span className="font-mono">{student.classYear}</span> ·
+          Distance &amp; Breaststroke ·{" "}
           <span className="text-ink-fade">
             Tracking against NCAA Division I standards
           </span>
         </p>
       </header>
 
-      {/* Hero â Power Index */}
+      {/* Hero — Power Index */}
       <PowerIndexHero pi={feed.power_index} />
 
       {/* Section header */}
@@ -115,7 +117,7 @@ export default async function StudentPage({
             </span>
             {feed._meta.schema_version && (
               <>
-                {" "}Â· feed schema{" "}
+                {" "}· feed schema{" "}
                 <span className="font-mono text-ink-soft">
                   v{feed._meta.schema_version}
                 </span>

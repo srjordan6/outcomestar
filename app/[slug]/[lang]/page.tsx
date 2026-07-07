@@ -13,6 +13,7 @@ import { ThemedSite, defaultStrings } from "../ThemedSite";
 import { GenericSite } from "../GenericSite";
 import { translateBatch } from "@/lib/translate";
 import { GOOGLE_LANGUAGE_CODES } from "@/lib/googleLanguages";
+import { getLatest } from "@/lib/latestActivity";
 
 export async function generateMetadata({
   params,
@@ -62,5 +63,6 @@ export default async function LangSitePage({
   };
 
   if (!theme) return <GenericSite site={site!} />;
-  return <ThemedSite site={site!} theme={theme} strings={strings} langBadge={lang.toUpperCase()} currentLang={lang} />;
+  const latest = await getLatest(site!.slug);
+  return <ThemedSite site={site!} theme={theme} strings={strings} langBadge={lang.toUpperCase()} currentLang={lang} latest={latest} />;
 }
