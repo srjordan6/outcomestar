@@ -81,7 +81,7 @@ export function ThemedSite({
         {/* accent band + language selector */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 40 }}>
           <div style={{ height: 6, background: theme.accent, borderRadius: 3, flex: 1 }} />
-          <LanguageSelector slug={site.slug} current={currentLang ?? site.language_primary ?? "en"} theme={theme} />
+          <LanguageSelector theme={theme} />
         </div>
 
         <header
