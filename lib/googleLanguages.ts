@@ -18,7 +18,7 @@ export const GOOGLE_LANGUAGES: Array<{ code: string; name: string }> = [
   { code: "ca", name: "Catalan" },
   { code: "ceb", name: "Cebuano" },
   { code: "ny", name: "Chichewa" },
-  { code: "zh", name: "Chinese (Simplified)" },
+  { code: "zh-CN", name: "Chinese (Simplified)" },
   { code: "zh-TW", name: "Chinese (Traditional)" },
   { code: "co", name: "Corsican" },
   { code: "hr", name: "Croatian" },
