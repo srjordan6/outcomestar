@@ -9,7 +9,7 @@ const API = process.env.NEXT_PUBLIC_FOCMS_API || "https://focms-api.onrender.com
 async function getSection(slug: string, code: string) {
   const r = await fetch(`${API}/focms/v1/public/site/${slug}/section/${code}`, { next: { revalidate: 60 } });
   if (!r.ok) return null;
-  return (await r.json()) as { title: string; code: string; items: Array<{ title: string; body?: string; date?: string }> };
+  return (await r.json()) as { title: string; code: string; items: Array<{ title: string; body?: string; date?: string; meta?: { stroke?: string; course?: string; event?: string; best_time?: string; first_time?: string; power_points?: number; usa_standard?: string } }> };
 }
 
 export default async function SectionPage({ params }: { params: { slug: string; code: string } }) {
@@ -48,6 +48,8 @@ export default async function SectionPage({ params }: { params: { slug: string; 
                 Content for <b style={{ color: theme.ink }}>{section.title}</b> appears here as the family adds records and marks them public.
               </p>
             </div>
+          ) : params.code === "athlete_tracker" ? (
+            <BestTimesBoard items={section.items} theme={theme} displayFont={displayFont} />
           ) : (
             <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
               {section.items.map((it, i) => (
@@ -71,3 +73,83 @@ export default async function SectionPage({ params }: { params: { slug: string; 
     </div>
   );
 }
+
+function parseTime(t?: string): number | null {
+  if (!t) return null;
+  const m = t.match(/^(?:(\d+):)?([0-5]?\d)(?:\.(\d+))?$/);
+  if (!m) return null;
+  const min = parseInt(m[1] || "0", 10);
+  const sec = parseInt(m[2] || "0", 10);
+  const frac = m[3] ? parseFloat("0." + m[3]) : 0;
+  return min * 60 + sec + frac;
+}
+function fmtDrop(best?: string, first?: string): { drop: string; pct: string } {
+  const b = parseTime(best), f = parseTime(first);
+  if (b == null || f == null || f <= 0) return { drop: "", pct: "" };
+  const d = f - b;
+  return { drop: d.toFixed(2), pct: ((d / f) * 100).toFixed(1) + "%" };
+}
+
+const STROKE_ORDER = ["Free", "Back", "Breast", "Fly", "IM"] as const;
+const STROKE_LABEL: Record<string, string> = { Free: "Freestyle", Back: "Backstroke", Breast: "Breaststroke", Fly: "Butterfly", IM: "Individual Medley" };
+
+function BestTimesBoard({
+  items,
+  theme,
+  displayFont,
+}: {
+  items: Array<{ title: string; date?: string; meta?: { stroke?: string; course?: string; event?: string; best_time?: string; first_time?: string; power_points?: number; usa_standard?: string } }>;
+  theme: import("@/lib/genericThemes").GenericThemeTokens;
+  displayFont: string;
+}) {
+  const byStroke: Record<string, typeof items> = {};
+  for (const it of items) {
+    const st = it.meta?.stroke || "Free";
+    (byStroke[st] ||= []).push(it);
+  }
+  const strokes = STROKE_ORDER.filter((s) => byStroke[s]?.length);
+
+  return (
+    <>
+      {strokes.map((st) => (
+        <div key={st} style={{ marginBottom: 32 }}>
+          <h3 style={{ fontFamily: `'${displayFont}', serif`, color: theme.accent, fontSize: 22, fontWeight: 600, marginBottom: 12 }}>
+            {STROKE_LABEL[st]}
+          </h3>
+          <div style={{ overflowX: "auto", border: `1px solid ${theme.border}`, borderRadius: 12, background: theme.card }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ background: `${theme.accent}22` }}>
+                  {["Event", "Best", "Pts", "Std", "First", "Drop", "%", "Meet"].map((h) => (
+                    <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: theme.ink, borderBottom: `2px solid ${theme.accent}`, whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {byStroke[st].map((it, i) => {
+                  const m = it.meta || {};
+                  const { drop, pct } = fmtDrop(m.best_time, m.first_time);
+                  return (
+                    <tr key={i} style={{ borderTop: `1px solid ${theme.border}` }}>
+                      <td style={{ padding: "10px 12px", color: theme.ink, whiteSpace: "nowrap" }}>
+                        {m.event || it.title} {m.course ? <span style={{ color: theme.soft, fontSize: 12 }}>({m.course})</span> : null}
+                      </td>
+                      <td style={{ padding: "10px 12px", color: theme.ink, fontWeight: 700 }}>{m.best_time || ""}</td>
+                      <td style={{ padding: "10px 12px", color: theme.soft }}>{m.power_points ?? ""}</td>
+                      <td style={{ padding: "10px 12px", color: theme.accent, fontWeight: 700 }}>{m.usa_standard || ""}</td>
+                      <td style={{ padding: "10px 12px", color: theme.soft }}>{m.first_time || ""}</td>
+                      <td style={{ padding: "10px 12px", color: theme.soft }}>{drop ? `-${drop}s` : ""}</td>
+                      <td style={{ padding: "10px 12px", color: theme.soft }}>{pct}</td>
+                      <td style={{ padding: "10px 12px", color: theme.soft, whiteSpace: "nowrap" }}>{it.date || ""}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
