@@ -1,27 +1,31 @@
 /**
- * ThemedSite.tsx — token-driven renderer for wizard-published family sites.
+ * ThemedSite.tsx — v3 "excitement kit" (2026-07-09), merged onto v2 (hero
+ * photo + latest-activity pass, 2026-07-06). One token-driven component
+ * renders all 30 catalog themes; every visual decision comes from
+ * GenericThemeTokens, never from code branches per theme key.
  *
- * Theme sprint v2 (2026-07-09): the "excitement kit" renderer. Still one
- * component for all 30 catalog themes — every visual decision comes from
- * GenericThemeTokens, never from code branches per theme key. What changed:
+ * v2 features preserved: hero photo slot (site.hero_url) framed per
+ * archetype, language selector, latest-activity headline, stat chips,
+ * clickable section cards (/{slug}/section/{code}), logo footer.
  *
- *   HERO MOMENT   full-personality header per archetype: comic panels get an
- *                 outlined name with hard shadow + rotated issue badge; neon
- *                 themes glow; dashboards get a LIVE telemetry strip; sticker
- *                 themes get a tilted badge sticker.
- *   FX LAYERS     halftone, scanlines, star field, stripe bands, tape strips,
- *                 corner brackets, foil sheen — pure CSS/SVG, zero assets.
- *   SECTION CHIPS burst badges / HUD brackets / colored dots per archetype
- *                 instead of one monospace numeral for everything.
- *   MOTION        staggered pop-in, hover lift, pulse dot. All animation is
- *                 CSS-only (server component safe) and fully disabled under
- *                 prefers-reduced-motion. `energy` token scales intensity.
+ * v3 adds the personality layer:
+ *   HERO MOMENT   panel themes get an outlined name with hard shadow and a
+ *                 rotated badge sticker; neon themes glow; stripes themes get
+ *                 a diagonal band behind the name.
+ *   FX LAYERS     halftone, scanlines, star field, tape strips, HUD corner
+ *                 brackets, foil sheen — pure CSS, zero assets.
+ *   SECTION CHIPS burst badges / ghost numerals / HUD brackets per archetype.
+ *   MOTION        staggered pop-in, hover lift, LIVE pulse dot. CSS-only
+ *                 (server component safe), disabled under
+ *                 prefers-reduced-motion, scaled by the `energy` token.
  *
- * Props contract unchanged — page.tsx and [lang]/page.tsx need no edits.
+ * Props contract identical to v2 — page.tsx, [lang]/page.tsx untouched.
  */
 
 import type { PublicSiteConfig } from "@/lib/publicSite";
 import type { GenericThemeTokens, ThemeFx } from "@/lib/genericThemes";
+import { formatLatest, type LatestActivity } from "@/lib/latestActivity";
+import { LanguageSelector } from "./LanguageSelector";
 
 export interface ThemedStrings {
   classOf: string;
@@ -66,11 +70,15 @@ export function ThemedSite({
   theme,
   strings,
   langBadge,
+  currentLang,
+  latest,
 }: {
   site: PublicSiteConfig;
   theme: GenericThemeTokens;
   strings: ThemedStrings;
   langBadge?: string | null;
+  currentLang?: string;
+  latest?: LatestActivity | null;
 }) {
   const [displayFont, bodyFont] = theme.fonts;
   const fontHref = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
@@ -81,8 +89,9 @@ export function ThemedSite({
 
   const isPoster = theme.layout === "poster";
   const isDashboard = theme.layout === "dashboard";
-  const isCards = theme.layout === "cards" || isDashboard;
   const isEditorial = theme.layout === "editorial";
+  const hero =
+    (site as PublicSiteConfig & { hero_url?: string | null }).hero_url ?? null;
 
   const energy = bandEnergy(theme);
   const pop = theme.pop ?? theme.accent;
@@ -99,29 +108,23 @@ export function ThemedSite({
   const foil = has(theme, "foil");
   const chalkFx = has(theme, "chalk");
 
-  const pageStyle: React.CSSProperties = {
-    background: theme.bg,
-    color: theme.ink,
-    minHeight: "100vh",
-    fontFamily: `'${bodyFont}', system-ui, sans-serif`,
-    position: "relative",
-    overflow: "hidden",
-  };
-  const motifStyle: React.CSSProperties = theme.motif
-    ? {
-        backgroundImage: theme.motif,
-        backgroundSize: theme.motif.includes("gradient(9")
-          ? "28px 28px"
-          : "26px 26px",
-      }
-    : {};
+  /* ---- hero photo frame per archetype (v2), comic override (v3) ---- */
+  const photoFrame: React.CSSProperties = panel
+    ? { borderRadius: 10, border: `4px solid ${theme.ink}`, boxShadow: panelShadow(theme.ink, 6) }
+    : theme.layout === "editorial"
+      ? { borderRadius: 10, border: `1px solid ${theme.border}`, boxShadow: `8px 8px 0 ${theme.accent}22` }
+      : theme.layout === "dashboard"
+        ? { borderRadius: 14, border: `2px solid ${theme.accent}`, boxShadow: glow ? `0 0 24px ${theme.accent}66` : `0 0 24px ${theme.accent}44` }
+        : theme.layout === "poster"
+          ? { borderRadius: 0, border: `6px solid ${theme.ink}` }
+          : { borderRadius: "50%", border: `5px solid ${theme.accent}` };
 
   /* ---- hero name treatment (the theme's signature moment) ---- */
   const nameStyle: React.CSSProperties = {
     fontFamily: `'${displayFont}', serif`,
-    fontSize: isPoster ? "clamp(64px, 14vw, 150px)" : "clamp(44px, 8vw, 84px)",
+    fontSize: isPoster ? "clamp(60px, 12vw, 130px)" : "clamp(42px, 7vw, 78px)",
     lineHeight: 0.95,
-    marginTop: 12,
+    marginTop: 10,
     fontWeight: 700,
     position: "relative",
     zIndex: 2,
@@ -133,7 +136,6 @@ export function ThemedSite({
     nameStyle.letterSpacing = "0.02em";
     nameStyle.transform = "rotate(-1.2deg)";
   } else if (neon) {
-    nameStyle.color = theme.ink;
     nameStyle.textShadow = `0 0 8px ${theme.accent}, 0 0 22px ${theme.accent}, 0 0 46px ${theme.accent}66`;
   } else if (glow && (isDashboard || isPoster)) {
     nameStyle.textShadow = `0 0 26px ${theme.accent}55`;
@@ -144,6 +146,9 @@ export function ThemedSite({
     background: theme.card,
     position: "relative",
     padding: "20px 22px",
+    color: theme.ink,
+    textDecoration: "none",
+    display: "block",
     transition:
       "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease",
   };
@@ -156,26 +161,42 @@ export function ThemedSite({
   } else if (isDashboard) {
     Object.assign(cardBase, {
       border: `1px solid ${theme.border}`,
+      borderTop: `4px solid ${theme.accent}`,
       borderRadius: 10,
-      borderTop: `3px solid ${theme.accent}`,
-      boxShadow: glow ? `0 0 0 1px ${theme.accent}22, 0 10px 30px rgba(0,0,0,.35)` : undefined,
+      boxShadow: glow
+        ? `0 0 0 1px ${theme.accent}22, 0 10px 30px rgba(0,0,0,.35)`
+        : undefined,
     });
   } else if (theme.layout === "cards") {
     Object.assign(cardBase, {
       border: chalkFx ? `2px dashed ${theme.border}` : `1px solid ${theme.border}`,
-      borderRadius: 18,
+      borderTop: `4px solid ${theme.accent}`,
+      borderRadius: 16,
       boxShadow: "0 10px 26px rgba(20,24,32,.08)",
     });
   } else {
     Object.assign(cardBase, {
       border: `1px solid ${theme.border}`,
+      borderTop: `4px solid ${theme.accent}`,
       borderRadius: 6,
-      borderLeft: `4px solid ${theme.accent}`,
     });
   }
 
   return (
-    <div style={{ ...pageStyle, ...motifStyle }} data-energy={energy}>
+    <div
+      style={{
+        background: theme.bg,
+        color: theme.ink,
+        minHeight: "100vh",
+        fontFamily: `'${bodyFont}', system-ui, sans-serif`,
+        position: "relative",
+        overflow: "hidden",
+        ...(theme.motif
+          ? { backgroundImage: theme.motif, backgroundSize: "26px 26px" }
+          : {}),
+      }}
+      data-energy={energy}
+    >
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link rel="stylesheet" href={fontHref} />
 
@@ -208,6 +229,7 @@ export function ThemedSite({
           ${panel ? `box-shadow: ${7 + energy}px ${7 + energy}px 0 ${theme.ink};` : ""}
           ${!panel && !isDashboard && !isEditorial ? "box-shadow: 0 18px 38px rgba(20,24,32,.14);" : ""}
           ${isDashboard && glow ? `box-shadow: 0 0 0 1px ${theme.accent}66, 0 14px 34px rgba(0,0,0,.45);` : ""}
+          ${isEditorial ? "box-shadow: 0 8px 20px rgba(20,24,32,.10);" : ""}
         }
         .os-hero { animation: os-drop .6s cubic-bezier(.34,1.56,.64,1) both; }
         .os-badge { animation: os-drop .7s .15s cubic-bezier(.34,1.56,.64,1) both; }
@@ -224,7 +246,7 @@ export function ThemedSite({
         }
       `}</style>
 
-      {/* full-page overlays */}
+      {/* full-page fx overlays */}
       {has(theme, "halftone") ? (
         <div
           aria-hidden
@@ -273,30 +295,70 @@ export function ThemedSite({
         className="mx-auto max-w-page px-6 pt-12 pb-24"
         style={{ position: "relative", zIndex: 1 }}
       >
+        {/* accent band + language selector (v2) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+          <div style={{ height: 6, background: theme.accent, borderRadius: 3, flex: 1 }} />
+          <LanguageSelector theme={theme} />
+        </div>
+        <p
+          style={{
+            color: theme.accent,
+            fontSize: 12,
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            fontWeight: 600,
+            marginBottom: 32,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {isDashboard && hud ? (
+            <span
+              data-os-pulse
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: pop,
+                display: "inline-block",
+                animation: "os-pulse 1.6s ease-in-out infinite",
+                flexShrink: 0,
+              }}
+            />
+          ) : null}
+          {formatLatest(latest ?? null)}
+        </p>
+
         {/* ------------------------------------------------ hero */}
         <header
           className="os-hero"
           style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 32,
+            alignItems: "center",
+            flexDirection: isPoster ? "column" : "row",
+            textAlign: isPoster ? "center" : "left",
             borderBottom: panel
               ? `4px solid ${theme.ink}`
               : `3px solid ${theme.accent}`,
-            paddingBottom: "2.2rem",
-            textAlign: isPoster ? "center" : "left",
+            paddingBottom: 32,
             position: "relative",
           }}
         >
-          {/* diagonal stripe band behind the name */}
+          {/* diagonal stripe band behind the hero */}
           {has(theme, "stripes") ? (
             <div
               aria-hidden
               style={{
                 position: "absolute",
                 left: isPoster ? "8%" : 0,
-                right: isPoster ? "8%" : "30%",
-                top: "38%",
+                right: isPoster ? "8%" : "20%",
+                top: "36%",
                 height: "clamp(40px, 8vw, 90px)",
                 background: `repeating-linear-gradient(-45deg, ${theme.accent} 0 14px, ${accent2} 14px 28px)`,
-                opacity: 0.18,
+                opacity: 0.16,
                 transform: "rotate(-1.5deg)",
                 borderRadius: 6,
                 zIndex: 0,
@@ -304,103 +366,123 @@ export function ThemedSite({
             />
           ) : null}
 
-          <p
-            style={{
-              color: theme.accent,
-              fontSize: 12,
-              letterSpacing: "0.28em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              position: "relative",
-              zIndex: 2,
-            }}
-          >
-            {strings.bandLabel}
-            {langBadge ? ` · ${langBadge}` : ""}
-          </p>
-
-          <h1 style={nameStyle}>{site.student_first_name}</h1>
-
-          {/* rotated hero badge / sticker */}
-          {theme.badge ? (
-            <span
-              className="os-badge"
+          {hero ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={hero}
+              alt={site.student_first_name}
+              width={200}
+              height={200}
               style={{
-                position: isPoster ? "static" : "absolute",
-                display: "inline-block",
-                marginTop: isPoster ? 18 : 0,
-                top: isPoster ? undefined : 6,
-                right: isPoster ? undefined : 0,
-                background: pop,
-                color: panel || isDashboard || neon ? "#141414" : "#FFFFFF",
-                fontFamily: `'${displayFont}', sans-serif`,
-                fontSize: 14,
-                letterSpacing: "0.1em",
-                padding: "8px 16px",
-                transform: `rotate(${isPoster ? -2 : 4}deg)`,
-                border: panel ? `3px solid ${theme.ink}` : "none",
-                borderRadius: panel ? 6 : 999,
-                boxShadow: panel
-                  ? panelShadow(theme.ink, 3)
-                  : "0 6px 18px rgba(0,0,0,.18)",
-                zIndex: 2,
-              }}
-            >
-              {theme.badge}
-            </span>
-          ) : null}
-
-          {strings.classOf ? (
-            <p
-              style={{
-                color: theme.soft,
-                marginTop: 16,
-                fontSize: 18,
+                width: 200,
+                height: 200,
+                objectFit: "cover",
+                objectPosition: "center 15%",
+                flexShrink: 0,
                 position: "relative",
                 zIndex: 2,
+                transform: sticker || panel ? "rotate(-2deg)" : undefined,
+                ...photoFrame,
               }}
-            >
-              {strings.classOf}
-            </p>
-          ) : null}
-
-          {/* dashboards get a telemetry strip instead of a caption */}
-          {isDashboard && hud ? (
-            <p
+            />
+          ) : (
+            <div
+              aria-hidden
               style={{
-                marginTop: 12,
-                fontFamily: "monospace",
-                fontSize: 12,
-                letterSpacing: "0.14em",
-                color: accent2,
+                width: 200,
+                height: 200,
+                flexShrink: 0,
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
+                justifyContent: "center",
+                fontFamily: `'${displayFont}', serif`,
+                fontSize: 96,
+                fontWeight: 700,
+                color: theme.accent,
+                background: theme.card,
+                position: "relative",
+                zIndex: 2,
+                transform: sticker || panel ? "rotate(-2deg)" : undefined,
+                ...photoFrame,
+              }}
+            >
+              {site.student_first_name.slice(0, 1)}
+            </div>
+          )}
+
+          <div style={{ flex: 1, minWidth: 260, position: "relative", zIndex: 2 }}>
+            <p
+              style={{
+                color: theme.accent,
+                fontSize: 12,
+                letterSpacing: "0.28em",
+                textTransform: "uppercase",
+                fontWeight: 600,
+              }}
+            >
+              {strings.bandLabel}
+              {langBadge ? ` · ${langBadge}` : ""}
+            </p>
+            <h1 style={nameStyle}>{site.student_first_name}</h1>
+
+            {/* rotated hero badge / sticker (v3) */}
+            {theme.badge ? (
+              <span
+                className="os-badge"
+                style={{
+                  display: "inline-block",
+                  marginTop: 14,
+                  background: pop,
+                  color: panel || isDashboard || neon ? "#141414" : "#FFFFFF",
+                  fontFamily: `'${displayFont}', sans-serif`,
+                  fontSize: 14,
+                  letterSpacing: "0.1em",
+                  padding: "7px 15px",
+                  transform: "rotate(-2deg)",
+                  border: panel ? `3px solid ${theme.ink}` : "none",
+                  borderRadius: panel ? 6 : 999,
+                  boxShadow: panel
+                    ? panelShadow(theme.ink, 3)
+                    : "0 6px 18px rgba(0,0,0,.18)",
+                }}
+              >
+                {theme.badge}
+              </span>
+            ) : null}
+
+            {/* stat chips (v2) */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                marginTop: 16,
                 justifyContent: isPoster ? "center" : "flex-start",
               }}
             >
-              <span
-                data-os-pulse
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  background: pop,
-                  display: "inline-block",
-                  animation: "os-pulse 1.6s ease-in-out infinite",
-                }}
-              />
-              LIVE · {theme.headerNote.toUpperCase()}
-            </p>
-          ) : (
-            <p style={{ color: theme.soft, marginTop: 6, fontSize: 13 }}>
-              {theme.headerNote}
-            </p>
-          )}
+              {[strings.classOf, theme.headerNote, `${strings.sections.length} ${strings.sectionsHeading.toLowerCase()}`]
+                .filter(Boolean)
+                .map((chip) => (
+                  <span
+                    key={chip}
+                    style={{
+                      background: theme.card,
+                      border: panel ? `2px solid ${theme.ink}` : `1px solid ${theme.border}`,
+                      color: theme.soft,
+                      borderRadius: 999,
+                      padding: "6px 14px",
+                      fontSize: 13,
+                    }}
+                  >
+                    {chip}
+                  </span>
+                ))}
+            </div>
+          </div>
         </header>
 
         {/* --------------------------------------------- sections */}
-        <section style={{ marginTop: 56 }}>
+        <section style={{ marginTop: 52 }}>
           <h2
             style={{
               fontFamily: `'${displayFont}', serif`,
@@ -417,9 +499,7 @@ export function ThemedSite({
               marginTop: 24,
               display: "grid",
               gap: panel ? 22 : 16,
-              gridTemplateColumns: isCards
-                ? "repeat(auto-fit, minmax(260px, 1fr))"
-                : "1fr",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             }}
           >
             {strings.sections.map((s, i) => {
@@ -431,7 +511,12 @@ export function ThemedSite({
                 cardStyle.transform = `rotate(${i % 2 === 0 ? -1.3 : 1.1}deg)`;
               }
               return (
-                <div key={s.code} className="os-card" style={cardStyle}>
+                <a
+                  key={s.code}
+                  href={`/${site.slug}/section/${s.code}`}
+                  className="os-card"
+                  style={cardStyle}
+                >
                   {foil ? <span className="os-foil" aria-hidden /> : null}
 
                   {/* tape strip */}
@@ -472,42 +557,67 @@ export function ThemedSite({
                         color: panel ? theme.ink : "#FFFFFF",
                         fontFamily: `'${displayFont}', sans-serif`,
                         fontSize: 15,
+                        fontWeight: 700,
                         border: panel ? `2.5px solid ${theme.ink}` : "none",
                         borderRadius: panel ? 8 : 999,
                         transform: `rotate(${i % 2 === 0 ? -6 : 5}deg)`,
                         boxShadow: panel ? panelShadow(theme.ink, 2) : "none",
                       }}
                     >
-                      {String(i + 1).padStart(2, "0")}
+                      {i + 1}
                     </span>
                   ) : isEditorial ? (
-                    <p
-                      aria-hidden
-                      style={{
-                        position: "absolute",
-                        top: 4,
-                        right: 14,
-                        fontFamily: `'${displayFont}', serif`,
-                        fontSize: 54,
-                        fontWeight: 700,
-                        color: `${theme.accent}18`,
-                        lineHeight: 1,
-                        userSelect: "none",
-                      }}
-                    >
-                      {String(i + 1).padStart(2, "0")}
-                    </p>
+                    <>
+                      <p
+                        aria-hidden
+                        style={{
+                          position: "absolute",
+                          top: 4,
+                          right: 14,
+                          fontFamily: `'${displayFont}', serif`,
+                          fontSize: 54,
+                          fontWeight: 700,
+                          color: `${theme.accent}18`,
+                          lineHeight: 1,
+                          userSelect: "none",
+                        }}
+                      >
+                        {i + 1}
+                      </p>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 30,
+                          height: 30,
+                          borderRadius: "50%",
+                          background: theme.accent,
+                          color: "#fff",
+                          fontSize: 13,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {i + 1}
+                      </span>
+                    </>
                   ) : (
-                    <p
+                    <span
                       style={{
-                        color: theme.accent,
-                        fontSize: 11,
-                        fontFamily: "monospace",
-                        letterSpacing: "0.12em",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 30,
+                        height: 30,
+                        borderRadius: "50%",
+                        background: theme.accent,
+                        color: isDashboard || isPoster ? theme.ink : "#fff",
+                        fontSize: 13,
+                        fontWeight: 700,
                       }}
                     >
-                      {hud ? `[ ${String(i + 1).padStart(2, "0")} ]` : String(i + 1).padStart(2, "0")}
-                    </p>
+                      {i + 1}
+                    </span>
                   )}
 
                   <h3
@@ -515,7 +625,7 @@ export function ThemedSite({
                       fontFamily: `'${displayFont}', serif`,
                       fontSize: 20,
                       fontWeight: 600,
-                      marginTop: 8,
+                      marginTop: 10,
                     }}
                   >
                     {s.title}
@@ -523,9 +633,10 @@ export function ThemedSite({
 
                   {/* grow note — speech bubble when the theme talks in bubbles */}
                   {bubble ? (
-                    <div
+                    <span
                       style={{
                         position: "relative",
+                        display: "block",
                         marginTop: 14,
                         background: theme.bg,
                         border: `2px solid ${theme.ink}`,
@@ -550,19 +661,19 @@ export function ThemedSite({
                         }}
                       />
                       {strings.growNote}
-                    </div>
+                    </span>
                   ) : (
                     <p style={{ color: theme.soft, marginTop: 8, fontSize: 14 }}>
                       {strings.growNote}
                     </p>
                   )}
-                </div>
+                </a>
               );
             })}
           </div>
         </section>
 
-        {/* ----------------------------------------------- footer */}
+        {/* ----------------------------------------------- footer (v2) */}
         <footer
           style={{
             marginTop: 80,
@@ -572,9 +683,23 @@ export function ThemedSite({
             paddingTop: 24,
             color: theme.soft,
             fontSize: 12,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 20,
+            flexWrap: "wrap",
           }}
         >
-          <p>{strings.footer}</p>
+          <a href="https://outcomestar.app" style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://outcomestar.app/outcomestar_logo_primary.png" alt="outcomestar" style={{ height: 56, background: "#fff", borderRadius: 8, padding: "6px 12px" }} />
+          </a>
+          <p>
+            &copy; 2026{" "}
+            <a href="https://srjconsultingservices.com" style={{ color: theme.soft, textDecoration: "underline" }}>
+              SRJ Consulting Services LLC
+            </a>
+          </p>
         </footer>
       </main>
     </div>
