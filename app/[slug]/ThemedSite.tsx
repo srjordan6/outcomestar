@@ -25,6 +25,7 @@
 import type { PublicSiteConfig } from "@/lib/publicSite";
 import type { GenericThemeTokens, ThemeFx } from "@/lib/genericThemes";
 import { formatLatest, type LatestActivity } from "@/lib/latestActivity";
+import TrophyCase from "./TrophyCase";
 import { LanguageSelector } from "./LanguageSelector";
 
 export interface ThemedStrings {
@@ -757,6 +758,15 @@ export function ThemedSite({
           </div>
           </div>
           ))}
+          {(theme.band === "band_1_5" || theme.band === "band_6_12") ? (
+            <TrophyCase
+              slug={site.slug}
+              accent={theme.accent}
+              ink={theme.ink}
+              card={theme.card}
+              displayFont={displayFont}
+            />
+          ) : null}
         </section>
 
         {/* ----------------------------------------------- footer (v2) */}
