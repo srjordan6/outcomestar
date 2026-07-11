@@ -694,12 +694,17 @@ export function ThemedSite({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="https://outcomestar.app/outcomestar_logo_primary.png" alt="outcomestar" style={{ height: 56, background: "#fff", borderRadius: 8, padding: "6px 12px" }} />
           </a>
-          <p>
-            &copy; 2026{" "}
-            <a href="https://srjconsultingservices.com" style={{ color: theme.soft, textDecoration: "underline" }}>
-              SRJ Consulting Services LLC
-            </a>
-          </p>
+          <div style={{ textAlign: "right" as const, flexShrink: 0 }}>
+            <p style={{ margin: 0 }}>
+              <a href="https://outcomestar.app/user-agreement" style={{ color: theme.soft, textDecoration: "underline" }}>Terms</a>
+              {" \u00b7 "}
+              <a href="https://outcomestar.app/privacy-policy" style={{ color: theme.soft, textDecoration: "underline" }}>Privacy</a>
+              {" \u00b7 "}
+              <a href="https://outcomestar.app/disclaimer" style={{ color: theme.soft, textDecoration: "underline" }}>Disclaimer</a>
+            </p>
+            <p style={{ margin: "6px 0 0" }}>&copy; 2026 SRJ Consulting &amp; Services LLC</p>
+            <p style={{ margin: "6px 0 0", maxWidth: 320, fontSize: 11, opacity: 0.85 }}>{strings.footer}</p>
+          </div>
         </footer>
       </main>
     </div>
