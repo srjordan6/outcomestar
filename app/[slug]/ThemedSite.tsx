@@ -30,7 +30,7 @@ import { LanguageSelector } from "./LanguageSelector";
 export interface ThemedStrings {
   classOf: string;
   bandLabel: string;
-  sections: Array<{ code: string; title: string }>;
+  sections: Array<{ code: string; title: string; pillar?: string }>;
   sectionsHeading: string;
   growNote: string;
   footer: string;
@@ -62,6 +62,29 @@ function bandEnergy(theme: GenericThemeTokens): number {
 
 /** Hard comic-panel shadow, scaled by energy. */
 const panelShadow = (ink: string, px: number) => `${px}px ${px}px 0 ${ink}`;
+
+/* Five-pillar identity for grouping section cards (roadmap R1). */
+const PILLAR_ORDER = ["personal", "academics", "extracurricular", "career", "higher_education"] as const;
+const PILLAR_LABEL: Record<string, string> = {
+  personal: "Personal",
+  academics: "Academics",
+  extracurricular: "Extracurricular",
+  career: "Career",
+  higher_education: "Higher Education",
+};
+function groupByPillar(
+  sections: Array<{ code: string; title: string; pillar?: string }>,
+): Array<{ pillar: string; label: string; items: Array<{ code: string; title: string; pillar?: string }> }> {
+  const buckets = new Map<string, Array<{ code: string; title: string; pillar?: string }>>();
+  for (const s of sections) {
+    const p = s.pillar && PILLAR_LABEL[s.pillar] ? s.pillar : "personal";
+    if (!buckets.has(p)) buckets.set(p, []);
+    buckets.get(p)!.push(s);
+  }
+  const ordered = PILLAR_ORDER.filter((p) => buckets.has(p));
+  for (const p of buckets.keys()) if (!ordered.includes(p as (typeof PILLAR_ORDER)[number])) ordered.push(p as (typeof PILLAR_ORDER)[number]);
+  return ordered.map((p) => ({ pillar: p, label: PILLAR_LABEL[p] ?? p, items: buckets.get(p)! }));
+}
 
 /* --------------------------------------------------------------- component */
 
@@ -532,15 +555,38 @@ export function ThemedSite({
           >
             {strings.sectionsHeading}
           </h2>
+          {groupByPillar(strings.sections).map((group) => (
+          <div key={group.pillar} style={{ marginTop: 28 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 4,
+              }}
+            >
+              <span
+                style={{
+                  color: theme.accent,
+                  fontSize: 12,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                }}
+              >
+                {group.label}
+              </span>
+              <span style={{ flex: 1, height: 1, background: `${theme.accent}33` }} />
+            </div>
           <div
             style={{
-              marginTop: 24,
+              marginTop: 12,
               display: "grid",
               gap: panel ? 22 : 16,
               gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             }}
           >
-            {strings.sections.map((s, i) => {
+            {group.items.map((s, i) => {
               const cardStyle: React.CSSProperties = {
                 ...cardBase,
                 animationDelay: `${0.08 * i}s`,
@@ -709,6 +755,8 @@ export function ThemedSite({
               );
             })}
           </div>
+          </div>
+          ))}
         </section>
 
         {/* ----------------------------------------------- footer (v2) */}

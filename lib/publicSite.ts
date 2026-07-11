@@ -15,7 +15,7 @@ export type PublicSiteConfig = {
   band_label: string;
   control_mode: string;
   theme: { key: string; name: string; vibe: string; built: boolean } | null;
-  sections: Array<{ code: string; title: string }>;
+  sections: Array<{ code: string; title: string; pillar?: string }>;
   language_primary: string;
   language_secondary: string | null;
 };
