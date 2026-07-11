@@ -31,7 +31,7 @@ import { LanguageSelector } from "./LanguageSelector";
 export interface ThemedStrings {
   classOf: string;
   bandLabel: string;
-  sections: Array<{ code: string; title: string; pillar?: string }>;
+  sections: Array<{ code: string; title: string; pillar?: string; count?: number; preview?: string | null }>;
   sectionsHeading: string;
   growNote: string;
   footer: string;
@@ -74,9 +74,9 @@ const PILLAR_LABEL: Record<string, string> = {
   higher_education: "Higher Education",
 };
 function groupByPillar(
-  sections: Array<{ code: string; title: string; pillar?: string }>,
-): Array<{ pillar: string; label: string; items: Array<{ code: string; title: string; pillar?: string }> }> {
-  const buckets = new Map<string, Array<{ code: string; title: string; pillar?: string }>>();
+  sections: Array<{ code: string; title: string; pillar?: string; count?: number; preview?: string | null }>,
+): Array<{ pillar: string; label: string; items: Array<{ code: string; title: string; pillar?: string; count?: number; preview?: string | null }> }> {
+  const buckets = new Map<string, Array<{ code: string; title: string; pillar?: string; count?: number; preview?: string | null }>>();
   for (const s of sections) {
     const p = s.pillar && PILLAR_LABEL[s.pillar] ? s.pillar : "personal";
     if (!buckets.has(p)) buckets.set(p, []);
@@ -716,7 +716,7 @@ export function ThemedSite({
                     {s.title}
                   </h3>
 
-                  {/* grow note — speech bubble when the theme talks in bubbles */}
+                  {/* grow note / live count — speech bubble when the theme talks in bubbles */}
                   {bubble ? (
                     <span
                       style={{
@@ -745,11 +745,15 @@ export function ThemedSite({
                           transform: "rotate(45deg)",
                         }}
                       />
-                      {strings.growNote}
+                      {(s.count ?? 0) > 0
+                        ? `${s.count} ${s.count === 1 ? "entry" : "entries"}${s.preview ? " · " + s.preview : ""}`
+                        : strings.growNote}
                     </span>
                   ) : (
-                    <p style={{ color: theme.soft, marginTop: 8, fontSize: 14 }}>
-                      {strings.growNote}
+                    <p style={{ color: (s.count ?? 0) > 0 ? theme.ink : theme.soft, marginTop: 8, fontSize: 14, fontWeight: (s.count ?? 0) > 0 ? 600 : 400 }}>
+                      {(s.count ?? 0) > 0
+                        ? `${s.count} ${s.count === 1 ? "entry" : "entries"}${s.preview ? " · " + s.preview : ""}`
+                        : strings.growNote}
                     </p>
                   )}
                 </a>
