@@ -300,25 +300,28 @@ export function ThemedSite({
           <div style={{ height: 6, background: theme.accent, borderRadius: 3, flex: 1 }} />
           <LanguageSelector theme={theme} />
         </div>
-        <p
-          style={{
-            color: theme.accent,
-            fontSize: 12,
-            letterSpacing: "0.2em",
-            textTransform: "uppercase",
-            fontWeight: 600,
-            marginBottom: 32,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          {isDashboard && hud ? (
+        {/* v4: latest-activity elevated to page headline (roadmap R2) */}
+        {latest ? (
+          <div
+            className="os-hero"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              background: panel ? theme.card : `${theme.accent}14`,
+              border: panel ? `3px solid ${theme.ink}` : `1px solid ${theme.accent}55`,
+              borderLeft: panel ? undefined : `6px solid ${theme.accent}`,
+              borderRadius: panel ? 10 : 12,
+              boxShadow: panel ? panelShadow(theme.ink, 4) : undefined,
+              padding: "14px 18px",
+              marginBottom: 32,
+            }}
+          >
             <span
               data-os-pulse
               style={{
-                width: 8,
-                height: 8,
+                width: 10,
+                height: 10,
                 borderRadius: 999,
                 background: pop,
                 display: "inline-block",
@@ -326,9 +329,44 @@ export function ThemedSite({
                 flexShrink: 0,
               }}
             />
-          ) : null}
-          {formatLatest(latest ?? null)}
-        </p>
+            <span
+              style={{
+                color: theme.accent,
+                fontSize: 11,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              Latest
+            </span>
+            <span
+              style={{
+                fontFamily: `'${displayFont}', serif`,
+                fontSize: "clamp(15px, 2.4vw, 20px)",
+                fontWeight: 600,
+                color: theme.ink,
+                lineHeight: 1.35,
+              }}
+            >
+              {formatLatest(latest)}
+            </span>
+          </div>
+        ) : (
+          <p
+            style={{
+              color: theme.accent,
+              fontSize: 12,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              fontWeight: 600,
+              marginBottom: 32,
+            }}
+          >
+            {formatLatest(null)}
+          </p>
+        )}
 
         {/* ------------------------------------------------ hero */}
         <header
