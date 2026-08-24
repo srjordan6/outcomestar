@@ -63,6 +63,29 @@ function bandEnergy(theme: GenericThemeTokens): number {
   return 1;
 }
 
+/**
+ * Per-archetype type scale and density.
+ *
+ * Every theme previously shared hardcoded sizes - section heading 30, card
+ * title 20, body 14 - so Bebas Neue at 130px and Source Serif at 78px got an
+ * identical hierarchy underneath. The personality died below the hero.
+ *
+ * Editorial is set denser and tighter because its reader is scanning for
+ * specifics; poster is set loud because its reader is being handed a statement.
+ */
+function typeScale(layout: GenericThemeTokens["layout"]) {
+  switch (layout) {
+    case "poster":
+      return { h2: 40, h3: 23, body: 14.5, pad: "22px 24px", gap: 18, rowGap: 34, track: "-.02em" };
+    case "editorial":
+      return { h2: 25, h3: 17, body: 14, pad: "15px 0", gap: 0, rowGap: 26, track: "-.005em" };
+    case "dashboard":
+      return { h2: 26, h3: 18, body: 13.5, pad: "18px 19px", gap: 13, rowGap: 28, track: "-.01em" };
+    default: // cards
+      return { h2: 29, h3: 19.5, body: 14, pad: "20px 22px", gap: 16, rowGap: 30, track: "-.015em" };
+  }
+}
+
 /** Hard comic-panel shadow, scaled by energy. */
 const panelShadow = (ink: string, px: number) => `${px}px ${px}px 0 ${ink}`;
 
@@ -140,6 +163,7 @@ export function ThemedSite({
     (site as PublicSiteConfig & { hero_url?: string | null }).hero_url ?? null;
 
   const energy = bandEnergy(theme);
+  const T = typeScale(theme.layout);
   const pop = theme.pop ?? theme.accent;
   const accent2 = theme.accent2 ?? theme.accent;
 
@@ -189,16 +213,25 @@ export function ThemedSite({
 
   /* ---- card treatment per archetype ---- */
   const cardBase: React.CSSProperties = {
-    background: theme.card,
+    background: isEditorial ? "transparent" : theme.card,
     position: "relative",
-    padding: "20px 22px",
+    padding: T.pad,
     color: theme.ink,
     textDecoration: "none",
     display: "block",
     transition:
       "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease",
   };
-  if (panel) {
+  if (isEditorial) {
+    /* Editorial is a reading column, not a grid. Rows with a hairline rule
+       scan vertically; cards force the eye to zigzag. */
+    Object.assign(cardBase, {
+      border: "none",
+      borderBottom: `1px solid ${theme.border}`,
+      borderRadius: 0,
+      display: "block",
+    });
+  } else if (panel) {
     Object.assign(cardBase, {
       border: `3px solid ${theme.ink}`,
       borderRadius: 10,
@@ -565,8 +598,9 @@ export function ThemedSite({
           <h2
             style={{
               fontFamily: `'${displayFont}', serif`,
-              fontSize: 30,
+              fontSize: T.h2,
               fontWeight: 600,
+              letterSpacing: T.track,
               textAlign: isPoster ? "center" : "left",
               transform: panel ? "rotate(-0.6deg)" : undefined,
             }}
@@ -574,7 +608,7 @@ export function ThemedSite({
             {strings.sectionsHeading}
           </h2>
           {groupByPillar(strings.sections).map((group) => (
-          <div key={group.pillar} style={{ marginTop: 28 }}>
+          <div key={group.pillar} style={{ marginTop: T.rowGap }}>
             <div
               style={{
                 display: "flex",
@@ -600,8 +634,11 @@ export function ThemedSite({
             style={{
               marginTop: 12,
               display: "grid",
-              gap: panel ? 22 : 16,
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: isEditorial ? 0 : panel ? 22 : T.gap,
+              gridTemplateColumns: isEditorial
+                ? "minmax(0,1fr)"
+                : "repeat(auto-fit, minmax(260px, 1fr))",
+              ...(isEditorial ? { maxWidth: "68ch" } : {}),
             }}
           >
             {group.items.map((s, i) => {
@@ -646,8 +683,16 @@ export function ThemedSite({
                     </>
                   ) : null}
 
-                  {/* section chip */}
-                  {burst ? (
+                  {/* Section indicator.
+                     Was `{i + 1}` on every card in every theme. That numbering
+                     encoded nothing true - sections are pillars, not a
+                     sequence - and because it restarts per pillar group a
+                     reader saw 1, 2 then 1, 2, 3. Replaced with the entry
+                     count, which is the one number on the card that means
+                     something. Editorial omits the chip entirely: its rows
+                     already state the count in the line beneath the title,
+                     and a reading column does not want ornament. */}
+                  {isEditorial ? null : burst ? (
                     <span
                       style={{
                         display: "inline-flex",
@@ -655,79 +700,54 @@ export function ThemedSite({
                         justifyContent: "center",
                         minWidth: 34,
                         height: 34,
-                        background: i % 2 === 0 ? pop : accent2,
-                        color: readableOn(i % 2 === 0 ? pop : accent2),
+                        padding: "0 10px",
+                        background: (s.count ?? 0) > 0 ? pop : "transparent",
+                        color: (s.count ?? 0) > 0 ? readableOn(pop) : theme.soft,
                         fontFamily: `'${displayFont}', sans-serif`,
                         fontSize: 15,
                         fontWeight: 700,
-                        border: panel ? `2.5px solid ${theme.ink}` : "none",
+                        border: panel
+                          ? `2.5px solid ${theme.ink}`
+                          : (s.count ?? 0) > 0
+                            ? "none"
+                            : `1px dashed ${theme.border}`,
                         borderRadius: panel ? 8 : 999,
                         transform: `rotate(${i % 2 === 0 ? -6 : 5}deg)`,
                         boxShadow: panel ? panelShadow(theme.ink, 2) : "none",
                       }}
                     >
-                      {i + 1}
+                      {(s.count ?? 0) > 0 ? s.count : "\u2014"}
                     </span>
-                  ) : isEditorial ? (
-                    <>
-                      <p
-                        aria-hidden
-                        style={{
-                          position: "absolute",
-                          top: 4,
-                          right: 14,
-                          fontFamily: `'${displayFont}', serif`,
-                          fontSize: 54,
-                          fontWeight: 700,
-                          color: `${theme.accent}18`,
-                          lineHeight: 1,
-                          userSelect: "none",
-                        }}
-                      >
-                        {i + 1}
-                      </p>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: 30,
-                          height: 30,
-                          borderRadius: "50%",
-                          background: theme.accent,
-                          color: readableOn(theme.accent),
-                          fontSize: 13,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {i + 1}
-                      </span>
-                    </>
                   ) : (
                     <span
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        width: 30,
-                        height: 30,
-                        borderRadius: "50%",
-                        background: theme.accent,
-                        color: readableOn(theme.accent),
-                        fontSize: 13,
+                        minWidth: 30,
+                        height: 26,
+                        padding: "0 9px",
+                        borderRadius: 999,
+                        background: (s.count ?? 0) > 0 ? `${theme.accent}1F` : "transparent",
+                        border: `1px solid ${(s.count ?? 0) > 0 ? theme.accent + "55" : theme.border}`,
+                        color: (s.count ?? 0) > 0 ? theme.accent : theme.soft,
+                        fontSize: 12,
                         fontWeight: 700,
+                        fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {i + 1}
+                      {(s.count ?? 0) > 0 ? s.count : "\u2014"}
                     </span>
                   )}
 
                   <h3
                     style={{
                       fontFamily: `'${displayFont}', serif`,
-                      fontSize: 20,
+                      fontSize: T.h3,
                       fontWeight: 600,
-                      marginTop: 10,
+                      letterSpacing: T.track,
+                      lineHeight: 1.3,
+                      marginTop: isEditorial ? 0 : 10,
                     }}
                   >
                     {s.title}
@@ -767,7 +787,14 @@ export function ThemedSite({
                         : strings.growNote}
                     </span>
                   ) : (
-                    <p style={{ color: (s.count ?? 0) > 0 ? theme.ink : theme.soft, marginTop: 8, fontSize: 14, fontWeight: (s.count ?? 0) > 0 ? 600 : 400 }}>
+                    <p style={{
+                      color: (s.count ?? 0) > 0 ? theme.ink : theme.soft,
+                      marginTop: isEditorial ? 4 : 8,
+                      fontSize: T.body,
+                      lineHeight: 1.55,
+                      fontWeight: (s.count ?? 0) > 0 ? 600 : 400,
+                      ...(isEditorial ? { marginTop: 4 } : {}),
+                    }}>
                       {(s.count ?? 0) > 0
                         ? `${s.count} ${s.count === 1 ? "entry" : "entries"}${s.preview ? " · " + s.preview : ""}`
                         : strings.growNote}
