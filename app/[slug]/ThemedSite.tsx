@@ -27,6 +27,8 @@ import type { GenericThemeTokens, ThemeFx } from "@/lib/genericThemes";
 import { formatLatest, type LatestActivity } from "@/lib/latestActivity";
 import TrophyCase from "./TrophyCase";
 import StudentAvatar from "./StudentAvatar";
+import HeroStage from "./HeroStage";
+import { heroForm } from "@/lib/heroForm";
 import type { AvatarTokens } from "@/lib/avatarTokens";
 import { LanguageSelector } from "./LanguageSelector";
 
@@ -165,6 +167,19 @@ export function ThemedSite({
   const energy = bandEnergy(theme);
   const T = typeScale(theme.layout);
   const pop = theme.pop ?? theme.accent;
+
+  /* One plate per entry on the record. The hero's shape is the data. */
+  const totalEntries = strings.sections.reduce((n, s) => n + (s.count ?? 0), 0);
+  const form = heroForm(theme.key, theme.band);
+  /* Derived from the background itself, not from which fx flags happen to be
+     set — same reasoning as readableOn(). */
+  const isDarkBg = readableOn(theme.bg) === "#FFFFFF";
+  /* Some themes set bg to a gradient, where appending an alpha suffix would
+     produce garbage. Fall back to a plain fade in that case. */
+  const bgIsHex = /^#[0-9a-fA-F]{6}$/.test(theme.bg.trim());
+  const heroVeil = bgIsHex
+    ? `radial-gradient(120% 82% at ${isPoster ? "50%" : "38%"} 46%, ${theme.bg}E6 24%, ${theme.bg}A6 58%, ${theme.bg}66 100%)`
+    : `radial-gradient(120% 82% at ${isPoster ? "50%" : "38%"} 46%, rgba(0,0,0,0) 24%, ${isDarkBg ? "rgba(0,0,0,.45)" : "rgba(255,255,255,.55)"} 100%)`;
   const accent2 = theme.accent2 ?? theme.accent;
 
   const panel = has(theme, "panel");
@@ -461,9 +476,35 @@ export function ThemedSite({
               ? `4px solid ${theme.ink}`
               : `3px solid ${theme.accent}`,
             paddingBottom: 32,
+            paddingTop: 28,
             position: "relative",
+            minHeight: isPoster ? "58vh" : "46vh",
           }}
         >
+          {/* The record, rendered. One plate per entry. Sits behind the
+              identity block; never intercepts a click. */}
+          <HeroStage
+            form={form}
+            entries={totalEntries}
+            bg={theme.bg}
+            accent={theme.accent}
+            accent2={accent2}
+            pop={pop}
+            base={theme.border}
+            mute={theme.soft}
+            light={!isDarkBg}
+          />
+          {/* keeps the type legible over whatever the stage is doing */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 1,
+              pointerEvents: "none",
+              background: heroVeil,
+            }}
+          />
           {/* diagonal stripe band behind the hero */}
           {has(theme, "stripes") ? (
             <div
