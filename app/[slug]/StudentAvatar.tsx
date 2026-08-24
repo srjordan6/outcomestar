@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * app/[slug]/StudentAvatar.tsx
  *
@@ -12,6 +10,9 @@
  *
  * There is no fourth branch, because there is no case in which a student
  * should see a bare initial on their own page. That was the whole point.
+ *
+ * Deliberately NOT a client component: it renders static SVG with no
+ * interactivity, so it costs zero client JS.
  */
 
 import { avatarSvg, safeTokens, type AvatarTokens } from "@/lib/avatarTokens";
