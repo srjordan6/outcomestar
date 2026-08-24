@@ -27,6 +27,7 @@ import type { GenericThemeTokens, ThemeFx } from "@/lib/genericThemes";
 import { formatLatest, type LatestActivity } from "@/lib/latestActivity";
 import TrophyCase from "./TrophyCase";
 import StudentAvatar from "./StudentAvatar";
+import type { AvatarTokens } from "@/lib/avatarTokens";
 import { LanguageSelector } from "./LanguageSelector";
 
 export interface ThemedStrings {
@@ -475,7 +476,7 @@ export function ThemedSite({
             <StudentAvatar
               slug={site.slug}
               firstName={site.student_first_name}
-              tokens={(site as PublicSiteConfig & { avatar_tokens?: Partial<import("@/lib/avatarTokens").AvatarTokens> | null }).avatar_tokens ?? null}
+              tokens={(site as PublicSiteConfig & { avatar_tokens?: Partial<AvatarTokens> | null }).avatar_tokens ?? null}
               size={200}
               radius={typeof photoFrame.borderRadius === "number" ? photoFrame.borderRadius : 0}
               style={{
