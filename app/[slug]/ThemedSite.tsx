@@ -26,6 +26,8 @@ import type { PublicSiteConfig } from "@/lib/publicSite";
 import type { GenericThemeTokens, ThemeFx } from "@/lib/genericThemes";
 import { formatLatest, type LatestActivity } from "@/lib/latestActivity";
 import TrophyCase from "./TrophyCase";
+import StudentAvatar from "./StudentAvatar";
+import type { AvatarTokens } from "@/lib/avatarTokens";
 import { LanguageSelector } from "./LanguageSelector";
 
 export interface ThemedStrings {
@@ -63,6 +65,26 @@ function bandEnergy(theme: GenericThemeTokens): number {
 
 /** Hard comic-panel shadow, scaled by energy. */
 const panelShadow = (ink: string, px: number) => `${px}px ${px}px 0 ${ink}`;
+
+/**
+ * Readable text colour for a given background.
+ *
+ * Replaces `panel || isDashboard || neon ? "#141414" : "#FFFFFF"`, which chose
+ * by fx flag rather than by contrast. On sketchbook that produced white on
+ * pop #F2B441 — about 1.9:1, well under the 4.5:1 minimum. Several other
+ * light-pop themes failed the same way.
+ */
+function readableOn(bg: string): string {
+  const h = bg.replace("#", "");
+  const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h.slice(0, 6), 16);
+  if (!Number.isFinite(n)) return "#FFFFFF";
+  const srgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  const L = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+  return 1.05 / (L + 0.05) >= (L + 0.05) / 0.05 ? "#FFFFFF" : "#141414";
+}
 
 /* Five-pillar identity for grouping section cards (roadmap R1). */
 const PILLAR_ORDER = ["personal", "academics", "extracurricular", "career", "higher_education"] as const;
@@ -448,28 +470,23 @@ export function ThemedSite({
               }}
             />
           ) : (
-            <div
-              aria-hidden
+            /* v5: no photo published -> a character, never a bare initial.
+               Deterministic from the slug, so a family that has not chosen
+               still gets a stable, distinct face. */
+            <StudentAvatar
+              slug={site.slug}
+              firstName={site.student_first_name}
+              tokens={(site as PublicSiteConfig & { avatar_tokens?: Partial<AvatarTokens> | null }).avatar_tokens ?? null}
+              size={200}
+              radius={typeof photoFrame.borderRadius === "number" ? photoFrame.borderRadius : 0}
               style={{
-                width: 200,
-                height: 200,
                 flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontFamily: `'${displayFont}', serif`,
-                fontSize: 96,
-                fontWeight: 700,
-                color: theme.accent,
-                background: theme.card,
                 position: "relative",
                 zIndex: 2,
                 transform: sticker || panel ? "rotate(-2deg)" : undefined,
                 ...photoFrame,
               }}
-            >
-              {site.student_first_name.slice(0, 1)}
-            </div>
+            />
           )}
 
           <div style={{ flex: 1, minWidth: 260, position: "relative", zIndex: 2 }}>
@@ -495,7 +512,7 @@ export function ThemedSite({
                   display: "inline-block",
                   marginTop: 14,
                   background: pop,
-                  color: panel || isDashboard || neon ? "#141414" : "#FFFFFF",
+                  color: readableOn(pop),
                   fontFamily: `'${displayFont}', sans-serif`,
                   fontSize: 14,
                   letterSpacing: "0.1em",
@@ -639,7 +656,7 @@ export function ThemedSite({
                         minWidth: 34,
                         height: 34,
                         background: i % 2 === 0 ? pop : accent2,
-                        color: panel ? theme.ink : "#FFFFFF",
+                        color: readableOn(i % 2 === 0 ? pop : accent2),
                         fontFamily: `'${displayFont}', sans-serif`,
                         fontSize: 15,
                         fontWeight: 700,
@@ -678,7 +695,7 @@ export function ThemedSite({
                           height: 30,
                           borderRadius: "50%",
                           background: theme.accent,
-                          color: "#fff",
+                          color: readableOn(theme.accent),
                           fontSize: 13,
                           fontWeight: 700,
                         }}
@@ -696,7 +713,7 @@ export function ThemedSite({
                         height: 30,
                         borderRadius: "50%",
                         background: theme.accent,
-                        color: isDashboard || isPoster ? theme.ink : "#fff",
+                        color: readableOn(theme.accent),
                         fontSize: 13,
                         fontWeight: 700,
                       }}
@@ -792,7 +809,7 @@ export function ThemedSite({
         >
           <a href="https://outcomestar.app" style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://outcomestar.app/outcomestar_logo_primary.png" alt="outcomestar" style={{ height: 56, background: "#fff", borderRadius: 8, padding: "6px 12px" }} />
+            <img src="https://outcomestar.app/outcomestar_logo_primary.png" alt="outcomestar" style={{ height: 32, background: "#fff", borderRadius: 6, padding: "5px 10px", opacity: 0.9 }} />
           </a>
           <div style={{ textAlign: "right" as const, flexShrink: 0 }}>
             <p style={{ margin: 0 }}>
