@@ -1,0 +1,193 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>THE DROP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#E8B84B;--navy:#2C4E9E;--ice:#EAF2FF;--mute:#7C8CA8;--e:cubic-bezier(.16,1,.3,1)}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:#04070E;color:var(--ice);font-family:Inter,system-ui,sans-serif;overflow-x:hidden}
+canvas{display:block}
+#stage{position:fixed;inset:0;z-index:0}
+#vig{position:fixed;inset:0;z-index:2;pointer-events:none;
+background:radial-gradient(120% 80% at 50% 46%,transparent 32%,rgba(2,4,9,.86) 100%)}
+.ui{position:relative;z-index:4;min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+padding:0 clamp(22px,5vw,74px);max-width:1240px;margin:0 auto;pointer-events:none}
+.eyebrow{display:flex;align-items:center;gap:11px;font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+color:var(--mute);opacity:0;animation:f .9s 1.9s var(--e) forwards}
+.eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--gold);font-style:normal}
+h1{font-family:Rubik,sans-serif;font-weight:800;font-size:clamp(76px,17vw,232px);line-height:.8;
+letter-spacing:-.05em;margin:14px 0 0;font-variant-numeric:tabular-nums;
+text-shadow:0 0 70px rgba(44,78,158,.55)}
+h1 em{font-style:normal;display:block;font-size:.3em;letter-spacing:-.02em;color:var(--gold);margin-top:10px}
+.sub{max-width:40ch;margin:26px 0 0;font-size:clamp(15px,1.7vw,18px);line-height:1.6;color:#B5C4DC;
+opacity:0;animation:f .9s 2.15s var(--e) forwards}
+.sub b{color:#fff;font-weight:600}
+@keyframes f{to{opacity:1}}
+.hud{position:fixed;left:0;right:0;bottom:0;z-index:4;padding:20px clamp(22px,5vw,74px);
+display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;
+font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--mute);letter-spacing:.1em;
+opacity:0;animation:f .9s 2.4s var(--e) forwards;pointer-events:none}
+.hud b{color:#fff;font-weight:500}
+#now{font-family:Rubik,sans-serif;font-size:clamp(22px,3.4vw,38px);font-weight:800;color:var(--gold);
+letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+#nowlb{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);margin-top:6px}
+#labs{position:fixed;inset:0;z-index:3;pointer-events:none}
+.lab{position:absolute;transform:translate(-50%,-100%);text-align:center;white-space:nowrap;
+will-change:transform,opacity;transition:opacity .25s linear}
+.lab .ev{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+color:#8FA9CE;display:block;margin-bottom:3px}
+.lab .tm{font-family:Rubik,sans-serif;font-weight:800;letter-spacing:-.02em;color:#DCE8FA;
+font-variant-numeric:tabular-nums;display:block;line-height:1;
+text-shadow:0 2px 14px rgba(4,7,14,.9)}
+.lab.land .tm{color:var(--gold);text-shadow:0 0 18px rgba(232,184,75,.5)}
+.lab .dl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--gold);display:block;margin-top:3px;opacity:0;
+transition:opacity .3s var(--e)}
+.lab.land .dl{opacity:.95}
+@media(max-width:760px){.lab .ev{font-size:8px;letter-spacing:.08em}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}.eyebrow,.sub,.hud{opacity:1}}
+</style></head><body>
+<div id="stage"></div><div id="labs"></div><div id="vig"></div>
+<section class="ui">
+  <div class="eyebrow"><i></i> John &middot; Lakeside &middot; 2022&ndash;2026</div>
+  <h1><span id="cnt">0</span><em>SECONDS FASTER</em></h1>
+  <p class="sub">Nineteen events. <b>Not one of them slower.</b> Each tower is a race, standing at his first recorded time &mdash; watch them fall to where he swims now.</p>
+</section>
+<div class="hud">
+  <div><span id="evn">&mdash;</span> &middot; <b id="evt"></b></div>
+  <div style="text-align:right"><div id="now">0</div><div id="nowlb">Events dropped</div></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+var D = [{"e": "500 Free", "c": "SCY", "f": 427.93, "b": 400.37, "ft": "7:07.93", "bt": "6:40.37", "p": 6.4}, {"e": "200 Free", "c": "SCY", "f": 204.01, "b": 146.18, "ft": "3:24.01", "bt": "2:26.18", "p": 28.3}, {"e": "200 Free", "c": "LCM", "f": 188.35, "b": 161.82999999999998, "ft": "3:08.35", "bt": "2:41.83", "p": 14.1}, {"e": "200 IM", "c": "SCY", "f": 183.44, "b": 153.81, "ft": "3:03.44", "bt": "2:33.81", "p": 16.2}, {"e": "200 Breast", "c": "SCY", "f": 179.85, "b": 165.63, "ft": "2:59.85", "bt": "2:45.63", "p": 7.9}, {"e": "200 Fly", "c": "SCY", "f": 167.7, "b": 166.79, "ft": "2:47.70", "bt": "2:46.79", "p": 0.5}, {"e": "100 Breast", "c": "SCY", "f": 107.33, "b": 77.11, "ft": "1:47.33", "bt": "1:17.11", "p": 28.2}, {"e": "100 Fly", "c": "LCM", "f": 97.47999999999999, "b": 77.95, "ft": "1:37.48", "bt": "1:17.95", "p": 20.0}, {"e": "100 Back", "c": "SCY", "f": 95.03999999999999, "b": 78.83, "ft": "1:35.04", "bt": "1:18.83", "p": 17.1}, {"e": "100 Free", "c": "SCY", "f": 93.62, "b": 65.96, "ft": "1:33.62", "bt": "1:05.96", "p": 29.5}, {"e": "100 Fly", "c": "SCY", "f": 88.92, "b": 69.39, "ft": "1:28.92", "bt": "1:09.39", "p": 22.0}, {"e": "100 Free", "c": "LCM", "f": 86.8, "b": 74.77, "ft": "1:26.80", "bt": "1:14.77", "p": 13.9}, {"e": "100 IM", "c": "SCY", "f": 77.62, "b": 72.5, "ft": "1:17.62", "bt": "1:12.50", "p": 6.6}, {"e": "50 Back", "c": "LCM", "f": 52.02, "b": 46.06, "ft": "52.02", "bt": "46.06", "p": 11.5}, {"e": "50 Breast", "c": "SCY", "f": 50.34, "b": 35.04, "ft": "50.34", "bt": "35.04", "p": 30.4}, {"e": "50 Back", "c": "SCY", "f": 48.02, "b": 36.82, "ft": "48.02", "bt": "36.82", "p": 23.3}, {"e": "50 Fly", "c": "SCY", "f": 47.25, "b": 31.56, "ft": "47.25", "bt": "31.56", "p": 33.2}, {"e": "50 Free", "c": "LCM", "f": 43.93, "b": 34.18, "ft": "43.93", "bt": "34.18", "p": 22.2}, {"e": "50 Free", "c": "SCY", "f": 42.2, "b": 30.15, "ft": "42.20", "bt": "30.15", "p": 28.6}], TOT = 356.9;
+(function(){
+var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var sc=new THREE.Scene(); sc.fog=new THREE.FogExp2(0x04070E,.028);
+var cam=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,300);
+var rn=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
+rn.setPixelRatio(Math.min(devicePixelRatio,2)); rn.setSize(innerWidth,innerHeight);
+document.getElementById('stage').appendChild(rn.domElement);
+
+sc.add(new THREE.AmbientLight(0x24406E,1.0));
+var key=new THREE.DirectionalLight(0xCFE2FF,1.35); key.position.set(-9,16,9); sc.add(key);
+var rim=new THREE.DirectionalLight(0x2C4E9E,2.3); rim.position.set(10,3,-12); sc.add(rim);
+var warm=new THREE.PointLight(0xE8B84B,2.6,42); warm.position.set(0,3,10); sc.add(warm);
+
+/* pool floor - dark, faintly reflective */
+var floor=new THREE.Mesh(new THREE.PlaneGeometry(400,400),
+  new THREE.MeshStandardMaterial({color:0x060B16,metalness:.72,roughness:.34}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-.02; sc.add(floor);
+
+/* lane lines running away to the horizon */
+for(var L=-1;L<=D.length;L++){
+  var g=new THREE.Mesh(new THREE.BoxGeometry(.035,.01,240),
+    new THREE.MeshBasicMaterial({color:0x1B3358,transparent:true,opacity:.16}));
+  g.material.color.setHex(0x1B3358); g.position.set(L*2.6-((D.length-1)*1.3),0,0); sc.add(g);
+}
+
+var SC=0.055, bars=[], caps=[];
+var matBar=new THREE.MeshStandardMaterial({color:0x2C4E9E,metalness:.42,roughness:.3,
+  emissive:0x0B1A3A,emissiveIntensity:.7});
+var matCap=new THREE.MeshStandardMaterial({color:0xE8B84B,metalness:.68,roughness:.22,
+  emissive:0xE8B84B,emissiveIntensity:.42});
+var geoBar=new THREE.BoxGeometry(1.5,1,1.5), geoCap=new THREE.BoxGeometry(1.62,.14,1.62);
+
+D.forEach(function(d,i){
+  var x=i*2.6-((D.length-1)*1.3);
+  var m=new THREE.Mesh(geoBar,matBar.clone());
+  m.position.set(x,0,0); m.scale.y=d.f*SC; m.position.y=d.f*SC/2;
+  sc.add(m); bars.push({m:m,d:d,h0:d.f*SC,h1:d.b*SC,x:x});
+  var c=new THREE.Mesh(geoCap,matCap.clone());
+  c.position.set(x,d.f*SC,0); sc.add(c); caps.push(c);
+});
+
+/* bubbles rising */
+var bn=220,bp=new Float32Array(bn*3);
+for(var i=0;i<bn;i++){bp[i*3]=(Math.random()-.5)*58;bp[i*3+1]=Math.random()*26;bp[i*3+2]=(Math.random()-.5)*30;}
+var bg=new THREE.BufferGeometry(); bg.setAttribute('position',new THREE.BufferAttribute(bp,3));
+var bub=new THREE.Points(bg,new THREE.PointsMaterial({color:0x8FB4E8,size:.075,transparent:true,opacity:.42,depthWrite:false}));
+sc.add(bub);
+
+
+/* one DOM label per tower: crisp text beats a canvas texture, and it
+   lets the time itself count down as the column falls. */
+function fmt(x){var m=Math.floor(x/60),r=x-m*60;
+  return m? m+':'+(r<10?'0':'')+r.toFixed(2) : r.toFixed(2);}
+var labs=document.getElementById('labs'), labEls=[];
+D.forEach(function(d){
+  var el=document.createElement('div'); el.className='lab';
+  el.innerHTML='<span class="ev">'+d.e+' '+d.c+'</span>'+
+               '<span class="tm">'+d.ft+'</span>'+
+               '<span class="dl">\u2212'+d.p+'%</span>';
+  labs.appendChild(el); labEls.push({el:el,tm:el.querySelector('.tm'),d:d,landed:false});
+});
+var pv=new THREE.Vector3();
+
+var cnt=document.getElementById('cnt'),now=document.getElementById('now'),
+    evn=document.getElementById('evn'),evt=document.getElementById('evt');
+var t0=null,mx=0,tmx=0,dropped=0,shown=0;
+addEventListener('mousemove',function(e){tmx=e.clientX/innerWidth-.5;},{passive:true});
+addEventListener('resize',function(){cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();rn.setSize(innerWidth,innerHeight);});
+
+var START=0.9, STEP=0.115, FALL=0.62;   /* each tower falls 115ms after the last */
+function tick(ts){
+  if(!t0)t0=ts; var T=(ts-t0)/1000;
+  mx+=(tmx-mx)*.05;
+
+  dropped=0; var gained=0;
+  bars.forEach(function(b,i){
+    var p=Math.max(0,Math.min((T-(START+i*STEP))/FALL,1));
+    var e=p<1? 1-Math.pow(1-p,4) : 1;                 /* quartic: slow lift, hard landing */
+    var h=b.h0+(b.h1-b.h0)*e;
+    b.m.scale.y=h; b.m.position.y=h/2;
+    caps[i].position.y=h;
+    var land=p>=1;
+    caps[i].material.emissiveIntensity = land? .42 : .42+Math.max(0,1-Math.abs(p-1)*9)*1.9;
+    b.m.material.emissiveIntensity = land? .7 : .7+ (p>0&&p<1?.5:0);
+    if(land){dropped++; gained+=(b.d.f-b.d.b);}
+    else if(p>0){gained+=(b.d.f-b.d.b)*e;}
+
+    /* label rides the cap; the number ticks down with the fall */
+    var L=labEls[i];
+    pv.set(b.x, h+0.55, 0).project(cam);
+    var vis = pv.z<1;
+    if(vis){
+      var sx=(pv.x*.5+.5)*innerWidth, sy=(-pv.y*.5+.5)*innerHeight;
+      var dist=cam.position.distanceTo(new THREE.Vector3(b.x,h,0));
+      var fs=Math.max(11,Math.min(26, 340/dist));
+      L.el.style.transform='translate(-50%,-100%) translate3d('+sx.toFixed(1)+'px,'+sy.toFixed(1)+'px,0)';
+      L.el.style.opacity=Math.max(0,Math.min(1,(46-dist)/22)).toFixed(2);
+      L.tm.style.fontSize=fs.toFixed(1)+'px';
+      var cur=b.d.f+(b.d.b-b.d.f)*e;
+      L.tm.textContent = land? b.d.bt : fmt(cur);
+      if(land&&!L.landed){L.landed=true;L.el.classList.add('land');}
+    } else L.el.style.opacity=0;
+
+    if(p>0&&p<1&&i>=shown){shown=i;evn.textContent=b.d.e+' '+b.d.c;evt.textContent=b.d.ft+'  \u2192  '+b.d.bt+'   \u2212'+b.d.p+'%';}
+  });
+  cnt.textContent=Math.round(gained);
+  now.textContent=dropped;
+
+  /* camera: sweeps the row while descending with the towers */
+  var s=Math.min(T/ (START+D.length*STEP+FALL),1), es=1-Math.pow(1-s,3);
+  cam.position.set(Math.sin(T*.075)*7+mx*6, 16-es*11.2, 30-es*8);
+  cam.lookAt(0, 5.5-es*4.2, 0);
+
+  bub.position.y=(T*.5)%9-4.5;
+  rn.render(sc,cam);
+  if(!reduce) requestAnimationFrame(tick);
+}
+if(reduce){
+  cam.position.set(0,5,24); cam.lookAt(0,2.5,0); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+  bars.forEach(function(b,i){b.m.scale.y=b.h1;b.m.position.y=b.h1/2;caps[i].position.y=b.h1;});
+  cnt.textContent=Math.round(TOT); now.textContent=D.length;
+  bars.forEach(function(b,i){
+    var L=labEls[i]; L.el.classList.add('land'); L.tm.textContent=b.d.bt;
+    pv.set(b.x,b.h1+0.55,0).project(cam);
+    L.el.style.transform='translate(-50%,-100%) translate3d('+((pv.x*.5+.5)*innerWidth).toFixed(1)+'px,'+((-pv.y*.5+.5)*innerHeight).toFixed(1)+'px,0)';
+    L.tm.style.fontSize='15px';
+  });
+  rn.render(sc,cam);
+} else requestAnimationFrame(tick);
+})();
+</script></body></html>
