@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { type Direction, type DropEvent } from "@/lib/progression";
+import { fmtTime, type Direction, type DropEvent } from "@/lib/progression";
 
 const THREE_SRC = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
 
@@ -56,8 +56,6 @@ export interface TheDropProps {
   sub: React.ReactNode;
   /** label under the events-landed counter */
   hudLabel: string;
-  /** formats a value on the scale being shown (time, division, chair, mark) */
-  format: (v: number) => string;
   accent: string;
   accent2: string;
   ground: string;
@@ -77,7 +75,7 @@ export default function TheDrop(p: TheDropProps) {
   const evn = useRef<HTMLSpanElement | null>(null);
   const evt = useRef<HTMLElement | null>(null);
 
-  const fmt = p.format;
+  const fmt = p.direction === "lower" ? fmtTime : (x: number) => Math.round(x).toLocaleString();
 
   useEffect(() => {
     const el = host.current, st = stage.current, lb = labs.current;
