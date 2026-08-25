@@ -22,7 +22,8 @@
  */
 
 import { useEffect, useRef } from "react";
-import { fmtTime, type Direction, type DropEvent } from "@/lib/progression";
+import { type Direction, type DropEvent } from "@/lib/progression";
+import { ARTS_SCALES, DEFAULT_SCALE } from "@/lib/artsScales";
 
 const THREE_SRC = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
 
@@ -56,6 +57,15 @@ export interface TheDropProps {
   sub: React.ReactNode;
   /** label under the events-landed counter */
   hudLabel: string;
+  /**
+   * Which scale the values are on: "time", "division", "chair", "mark"...
+   * The KEY crosses the boundary, never the formatter. This is a client
+   * component and the section page is a server component, so a function
+   * prop cannot be serialised into the RSC payload - passing one throws at
+   * render and takes the whole page to a 500. The formatter is looked up
+   * here instead.
+   */
+  scaleKey: string;
   accent: string;
   accent2: string;
   ground: string;
@@ -75,7 +85,7 @@ export default function TheDrop(p: TheDropProps) {
   const evn = useRef<HTMLSpanElement | null>(null);
   const evt = useRef<HTMLElement | null>(null);
 
-  const fmt = p.direction === "lower" ? fmtTime : (x: number) => Math.round(x).toLocaleString();
+  const fmt = (ARTS_SCALES[p.scaleKey] ?? DEFAULT_SCALE).format;
 
   useEffect(() => {
     const el = host.current, st = stage.current, lb = labs.current;
