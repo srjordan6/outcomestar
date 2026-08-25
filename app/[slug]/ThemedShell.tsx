@@ -15,14 +15,19 @@ import type { GenericThemeTokens } from "@/lib/genericThemes";
 import { bandEnergy, fontHrefFor, fxFlags, showcaseCss } from "@/lib/showcaseKit";
 import { LanguageSelector } from "./LanguageSelector";
 
+export type Crumb = { label: string; href?: string };
+
 export function ThemedShell({
   theme,
   footerNote,
+  crumbs,
   children,
 }: {
   theme: GenericThemeTokens;
   /** privacy line under the copyright; optional on sub-pages */
   footerNote?: string;
+  /** breadcrumb trail; last item is the current page (no href) */
+  crumbs?: Crumb[];
   children: React.ReactNode;
 }) {
   const [, bodyFont] = theme.fonts;
@@ -98,6 +103,26 @@ export function ThemedShell({
           <div style={{ height: 6, background: theme.accent, borderRadius: 3, flex: 1 }} />
           <LanguageSelector theme={theme} />
         </div>
+
+        {crumbs && crumbs.length ? (
+          <nav aria-label="Breadcrumb" style={{ marginBottom: 22 }}>
+            <ol style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, listStyle: "none", margin: 0, padding: 0, fontSize: 12.5, letterSpacing: "0.04em" }}>
+              {crumbs.map((c, i) => {
+                const last = i === crumbs.length - 1;
+                return (
+                  <li key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {c.href && !last ? (
+                      <a href={c.href} style={{ color: theme.accent, textDecoration: "none", fontWeight: 600 }}>{c.label}</a>
+                    ) : (
+                      <span style={{ color: last ? theme.soft : theme.ink, fontWeight: last ? 500 : 600 }} aria-current={last ? "page" : undefined}>{c.label}</span>
+                    )}
+                    {!last ? <span aria-hidden style={{ color: theme.soft, opacity: 0.7 }}>{fx.isEditorial ? "/" : "\u203A"}</span> : null}
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
+        ) : null}
 
         {children}
 

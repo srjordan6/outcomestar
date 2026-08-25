@@ -5,7 +5,7 @@ const API = process.env.NEXT_PUBLIC_FOCMS_API || "https://focms-api.onrender.com
 
 export async function getLatest(slug: string): Promise<LatestActivity | null> {
   try {
-    const r = await fetch(`${API}/focms/v1/public/site/${slug}/latest`, { next: { revalidate: 60 } });
+    const r = await fetch(`${API}/focms/v1/public/site/${slug}/latest`, { cache: "no-store" });
     if (!r.ok) return null;
     const d = (await r.json()) as LatestResponse;
     return d.latest;

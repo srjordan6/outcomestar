@@ -5,6 +5,8 @@
  * lib/translate; falls back to English text if translation is unavailable.
  */
 
+export const dynamic = "force-dynamic";  // themes/records must reflect the latest save, not a 60s cache
+
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPublicSite } from "@/lib/publicSite";

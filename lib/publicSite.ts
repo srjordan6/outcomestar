@@ -25,7 +25,7 @@ export async function getPublicSite(
 ): Promise<PublicSiteConfig | null> {
   try {
     const r = await fetch(`${API}/focms/v1/public/site/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 60 },
+      cache: "no-store",
     });
     if (!r.ok) return null;
     return (await r.json()) as PublicSiteConfig;

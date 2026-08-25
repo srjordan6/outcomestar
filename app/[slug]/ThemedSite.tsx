@@ -68,7 +68,7 @@ export function ThemedSite({
   const totalEntries = strings.sections.reduce((n, s) => n + (s.count ?? 0), 0);
 
   return (
-    <ThemedShell theme={theme} footerNote={strings.footer}>
+    <ThemedShell theme={theme} footerNote={strings.footer} crumbs={[{ label: site.student_first_name }]}>
       {/* latest-activity elevated to page headline (roadmap R2) */}
       {latest ? (
         <div
@@ -230,7 +230,7 @@ export function ThemedSite({
           </div>
         ))}
         {theme.band === "band_1_5" || theme.band === "band_6_12" ? (
-          <TrophyCase slug={site.slug} accent={theme.accent} ink={theme.ink} card={theme.card} displayFont={displayFont} />
+          <TrophyCase slug={site.slug} theme={theme} displayFont={displayFont} />
         ) : null}
       </section>
     </ThemedShell>

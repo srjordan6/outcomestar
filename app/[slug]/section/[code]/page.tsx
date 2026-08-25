@@ -17,6 +17,8 @@
  * mission-control site gets HUD brackets here, exactly as on the front.
  */
 
+export const dynamic = "force-dynamic";  // themes/records must reflect the latest save, not a 60s cache
+
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPublicSite } from "@/lib/publicSite";
@@ -38,7 +40,7 @@ type Item = {
 };
 
 async function getSection(slug: string, code: string) {
-  const r = await fetch(`${API}/focms/v1/public/site/${slug}/section/${code}`, { next: { revalidate: 60 } });
+  const r = await fetch(`${API}/focms/v1/public/site/${slug}/section/${code}`, { cache: "no-store" });
   if (!r.ok) return null;
   return (await r.json()) as { title: string; code: string; items: Item[] };
 }
@@ -91,7 +93,7 @@ export default async function SectionPage({ params }: { params: { slug: string; 
     : null;
 
   return (
-    <ThemedShell theme={theme}>
+    <ThemedShell theme={theme} crumbs={[{ label: first, href: `/${site!.slug}` }, { label: section.title }]}>
       <p style={{ color: theme.accent, fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, marginBottom: 24 }}>
         {formatLatest(latest)}
       </p>
