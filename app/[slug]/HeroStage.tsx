@@ -14,6 +14,12 @@
  *
  * Everything is guarded: no WebGL context, no THREE, reduced motion, tiny
  * records, zero entries. Each of those renders something sane.
+ *
+ * v2 (2026-08-24): plates thicken as the record gets smaller, so 40 entries
+ * reads as an object rather than a smudge; fog pulled back (it was eating
+ * half the form at camera distance); the stack can sit off-centre (xShift)
+ * so it fills the empty side of a row-layout hero instead of hiding behind
+ * the name; light-ground rig exposed less so pale plates keep their edges.
  */
 
 import { useEffect, useRef } from "react";
@@ -48,6 +54,10 @@ export interface HeroStageProps {
   bg: string; accent: string; accent2: string; pop: string; base: string; mute: string;
   /** true when the theme ground is light: flips the lighting rig */
   light: boolean;
+  /** where the stack sits horizontally, as a fraction of the visible half
+      width: 0 = centred, 0.45 = about 72% across. Fades to centred on narrow
+      viewports so it never leaves the frame. */
+  xShift?: number;
 }
 
 export default function HeroStage(p: HeroStageProps) {
@@ -91,6 +101,10 @@ export default function HeroStage(p: HeroStageProps) {
       if (stop || !THREE || !el) return;
       // a record with nothing in it has no shape to show
       const N = Math.max(24, Math.min(p.entries || 0, 4000));
+      /* Vertical span of the stack is ~11 units. Spread the plates so a small
+         record still has mass: thick slabs with air between them, thinning
+         toward a sheet of leaves as the count climbs. */
+      const THICK = Math.max(p.form === "tower" ? 0.038 : 0.03, Math.min(0.26, (11.2 / N) * 0.55));
       let renderer: any;
       try {
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
@@ -101,21 +115,21 @@ export default function HeroStage(p: HeroStageProps) {
       const hex = (c: string) => parseInt(c.replace("#", "").slice(0, 6), 16) || 0x888888;
 
       const scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(hex(p.bg), p.form === "orbit" ? 0.036 : 0.052);
+      scene.fog = new THREE.FogExp2(hex(p.bg), p.form === "orbit" ? 0.022 : 0.03);
       const cam = new THREE.PerspectiveCamera(38, W() / H(), 0.1, 200);
       cam.position.set(0, 2.2, 17);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(W(), H());
       el.appendChild(renderer.domElement);
 
-      scene.add(new THREE.AmbientLight(0xffffff, dark ? 0.55 : 1.15));
-      const k = new THREE.DirectionalLight(0xbfd8f0, dark ? 1.5 : 1.05); k.position.set(-6, 11, 7); scene.add(k);
-      const r = new THREE.DirectionalLight(hex(p.accent), dark ? 1.9 : 0.85); r.position.set(7, 2, -9); scene.add(r);
-      const l = new THREE.PointLight(hex(p.accent2), dark ? 1.5 : 0.65, 26); l.position.set(3, -5, 4); scene.add(l);
+      scene.add(new THREE.AmbientLight(0xffffff, dark ? 0.55 : 0.7));
+      const k = new THREE.DirectionalLight(0xbfd8f0, dark ? 1.5 : 1.0); k.position.set(-6, 11, 7); scene.add(k);
+      const r = new THREE.DirectionalLight(hex(p.accent), dark ? 1.9 : 0.9); r.position.set(7, 2, -9); scene.add(r);
+      const l = new THREE.PointLight(hex(p.accent2), dark ? 1.5 : 0.7, 26); l.position.set(3, -5, 4); scene.add(l);
 
-      const geo = new THREE.BoxGeometry(1, p.form === "tower" ? 0.038 : 0.03, 1);
+      const geo = new THREE.BoxGeometry(1, THICK, 1);
       const mat = new THREE.MeshStandardMaterial({
-        metalness: dark ? 0.28 : 0.06, roughness: dark ? 0.42 : 0.62, vertexColors: true,
+        metalness: dark ? 0.28 : 0.12, roughness: dark ? 0.42 : 0.55, vertexColors: true,
       });
       const mesh = new THREE.InstancedMesh(geo, mat, N);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -123,6 +137,10 @@ export default function HeroStage(p: HeroStageProps) {
       const col = new THREE.InstancedBufferAttribute(new Float32Array(N * 3), 3);
       const cB = new THREE.Color(p.base), cH = new THREE.Color(p.accent),
             cC = new THREE.Color(p.accent2), cG = new THREE.Color(p.pop);
+      /* On a light ground the border colour is usually a pale grey that
+         vanishes into the page; pull it toward the accent so the plates
+         keep a visible edge. */
+      if (!dark) cB.lerp(cH, 0.35);
       type Plate = { y: number; w: number; rot: number; rad: number; t: number };
       const P: Plate[] = [];
       for (let i = 0; i < N; i++) {
@@ -165,6 +183,14 @@ export default function HeroStage(p: HeroStageProps) {
 
       const dum = new THREE.Object3D(), clock = new THREE.Clock();
       let entry = 0, mx = 0, my = 0, tmx = 0, tmy = 0, sN = 0;
+      /* off-centre only when there is room: full shift at wide aspect,
+         centred once the hero stacks vertically on a phone */
+      const shiftFor = () => {
+        const a = W() / H();
+        const halfW = 17 * Math.tan((38 / 2) * Math.PI / 180) * a;   // visible half width at rest
+        return (p.xShift ?? 0) * halfW * Math.max(0, Math.min(1, (a - 1) / 1.5));
+      };
+      let xs = shiftFor();
 
       const onMove = (e: MouseEvent) => {
         tmx = e.clientX / window.innerWidth - 0.5;
@@ -172,7 +198,7 @@ export default function HeroStage(p: HeroStageProps) {
       };
       const onScroll = () => { sN = Math.min(window.scrollY / window.innerHeight, 1.4); };
       const onResize = () => {
-        cam.aspect = W() / H(); cam.updateProjectionMatrix(); renderer.setSize(W(), H());
+        cam.aspect = W() / H(); cam.updateProjectionMatrix(); renderer.setSize(W(), H()); xs = shiftFor();
       };
       window.addEventListener("mousemove", onMove, { passive: true });
       window.addEventListener("scroll", onScroll, { passive: true });
@@ -188,8 +214,8 @@ export default function HeroStage(p: HeroStageProps) {
           const a = reduce ? 1 : Math.max(0, Math.min((entry * 1.35 - q.t * 0.35) / 0.65, 1));
           const e = 1 - Math.pow(1 - a, 3);
           const ang = q.rot + spin;
-          if (q.rad) dum.position.set(Math.cos(ang) * q.rad * e, q.y * e - (1 - e) * 7, Math.sin(ang) * q.rad * e);
-          else dum.position.set(0, q.y * e - (1 - e) * 7, 0);
+          if (q.rad) dum.position.set(xs + Math.cos(ang) * q.rad * e, q.y * e - (1 - e) * 7, Math.sin(ang) * q.rad * e);
+          else dum.position.set(xs, q.y * e - (1 - e) * 7, 0);
           dum.rotation.y = ang; dum.rotation.x = my * 0.16;
           const s = q.w * e; dum.scale.set(s, 1, s);
           dum.updateMatrix(); mesh.setMatrixAt(i, dum.matrix);
@@ -217,7 +243,7 @@ export default function HeroStage(p: HeroStageProps) {
     }).catch(() => { /* CDN unreachable: the themed background stands on its own */ });
 
     return () => { stop = true; if (cleanup) cleanup(); };
-  }, [p.form, p.entries, p.bg, p.accent, p.accent2, p.pop, p.base, p.mute, p.light]);
+  }, [p.form, p.entries, p.bg, p.accent, p.accent2, p.pop, p.base, p.mute, p.light, p.xShift]);
 
   return <div ref={host} aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }} />;
 }

@@ -614,7 +614,7 @@ const ResumeMode: React.FC<ResumeModeProps> = ({
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
         .rm-root { font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; }
@@ -625,7 +625,7 @@ const ResumeMode: React.FC<ResumeModeProps> = ({
           .rm-noprint { display: none !important; }
           @page { margin: 0.6in; }
         }
-      `}</style>
+      ` }} />
       <div
         className="rm-root min-h-screen w-full"
         style={{ background: "#fafaf9", color: "#1c1917" }}

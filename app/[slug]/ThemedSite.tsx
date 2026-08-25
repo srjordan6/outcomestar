@@ -1,41 +1,29 @@
 /**
- * ThemedSite.tsx — v3 "excitement kit" (2026-07-09), merged onto v2 (hero
- * photo + latest-activity pass, 2026-07-06). One token-driven component
- * renders all 30 catalog themes; every visual decision comes from
- * GenericThemeTokens, never from code branches per theme key.
+ * ThemedSite.tsx — v6 (2026-08-24): landing page composed from the shared
+ * showcase kit. v3 "excitement kit" (2026-07-09) merged onto v2 (hero photo +
+ * latest-activity, 2026-07-06); v4 latest headline; v5 character avatar.
  *
- * v2 features preserved: hero photo slot (site.hero_url) framed per
- * archetype, language selector, latest-activity headline, stat chips,
- * clickable section cards (/{slug}/section/{code}), logo footer.
- *
- * v3 adds the personality layer:
- *   HERO MOMENT   panel themes get an outlined name with hard shadow and a
- *                 rotated badge sticker; neon themes glow; stripes themes get
- *                 a diagonal band behind the name.
- *   FX LAYERS     halftone, scanlines, star field, tape strips, HUD corner
- *                 brackets, foil sheen — pure CSS, zero assets.
- *   SECTION CHIPS burst badges / ghost numerals / HUD brackets per archetype.
- *   MOTION        staggered pop-in, hover lift, LIVE pulse dot. CSS-only
- *                 (server component safe), disabled under
- *                 prefers-reduced-motion, scaled by the `energy` token.
+ * v6 moves the page chrome to ThemedShell and the hero to ThemedHero so the
+ * section pages render the same design. Every visual decision still comes
+ * from GenericThemeTokens, never from code branches per theme key.
  *
  * Props contract identical to v2 — page.tsx, [lang]/page.tsx untouched.
  */
 
 import type { PublicSiteConfig } from "@/lib/publicSite";
-import type { GenericThemeTokens, ThemeFx } from "@/lib/genericThemes";
+import type { GenericThemeTokens } from "@/lib/genericThemes";
 import { formatLatest, type LatestActivity } from "@/lib/latestActivity";
+import {
+  bandEnergy, cardBaseFor, fxFlags, groupByPillar, panelShadow, readableOn, typeScale, type SectionRef,
+} from "@/lib/showcaseKit";
+import { ThemedShell } from "./ThemedShell";
+import { ThemedHero } from "./ThemedHero";
 import TrophyCase from "./TrophyCase";
-import StudentAvatar from "./StudentAvatar";
-import HeroStage from "./HeroStage";
-import { heroForm } from "@/lib/heroForm";
-import type { AvatarTokens } from "@/lib/avatarTokens";
-import { LanguageSelector } from "./LanguageSelector";
 
 export interface ThemedStrings {
   classOf: string;
   bandLabel: string;
-  sections: Array<{ code: string; title: string; pillar?: string; count?: number; preview?: string | null }>;
+  sections: SectionRef[];
   sectionsHeading: string;
   growNote: string;
   footer: string;
@@ -53,87 +41,6 @@ export function defaultStrings(site: PublicSiteConfig): ThemedStrings {
   };
 }
 
-/* ---------------------------------------------------------------- helpers */
-
-const has = (theme: GenericThemeTokens, f: ThemeFx) =>
-  (theme.fx ?? []).includes(f);
-
-function bandEnergy(theme: GenericThemeTokens): number {
-  if (theme.energy) return theme.energy;
-  if (theme.band === "band_6_12") return 3;
-  if (theme.band === "band_1_5") return 2;
-  return 1;
-}
-
-/**
- * Per-archetype type scale and density.
- *
- * Every theme previously shared hardcoded sizes - section heading 30, card
- * title 20, body 14 - so Bebas Neue at 130px and Source Serif at 78px got an
- * identical hierarchy underneath. The personality died below the hero.
- *
- * Editorial is set denser and tighter because its reader is scanning for
- * specifics; poster is set loud because its reader is being handed a statement.
- */
-function typeScale(layout: GenericThemeTokens["layout"]) {
-  switch (layout) {
-    case "poster":
-      return { h2: 40, h3: 23, body: 14.5, pad: "22px 24px", gap: 18, rowGap: 34, track: "-.02em" };
-    case "editorial":
-      return { h2: 25, h3: 17, body: 14, pad: "15px 0", gap: 0, rowGap: 26, track: "-.005em" };
-    case "dashboard":
-      return { h2: 26, h3: 18, body: 13.5, pad: "18px 19px", gap: 13, rowGap: 28, track: "-.01em" };
-    default: // cards
-      return { h2: 29, h3: 19.5, body: 14, pad: "20px 22px", gap: 16, rowGap: 30, track: "-.015em" };
-  }
-}
-
-/** Hard comic-panel shadow, scaled by energy. */
-const panelShadow = (ink: string, px: number) => `${px}px ${px}px 0 ${ink}`;
-
-/**
- * Readable text colour for a given background.
- *
- * Replaces `panel || isDashboard || neon ? "#141414" : "#FFFFFF"`, which chose
- * by fx flag rather than by contrast. On sketchbook that produced white on
- * pop #F2B441 — about 1.9:1, well under the 4.5:1 minimum. Several other
- * light-pop themes failed the same way.
- */
-function readableOn(bg: string): string {
-  const h = bg.replace("#", "");
-  const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h.slice(0, 6), 16);
-  if (!Number.isFinite(n)) return "#FFFFFF";
-  const srgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
-    const c = v / 255;
-    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  });
-  const L = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-  return 1.05 / (L + 0.05) >= (L + 0.05) / 0.05 ? "#FFFFFF" : "#141414";
-}
-
-/* Five-pillar identity for grouping section cards (roadmap R1). */
-const PILLAR_ORDER = ["personal", "academics", "extracurricular", "career", "higher_education"] as const;
-const PILLAR_LABEL: Record<string, string> = {
-  personal: "Personal",
-  academics: "Academics",
-  extracurricular: "Extracurricular",
-  career: "Career",
-  higher_education: "Higher Education",
-};
-function groupByPillar(
-  sections: Array<{ code: string; title: string; pillar?: string; count?: number; preview?: string | null }>,
-): Array<{ pillar: string; label: string; items: Array<{ code: string; title: string; pillar?: string; count?: number; preview?: string | null }> }> {
-  const buckets = new Map<string, Array<{ code: string; title: string; pillar?: string; count?: number; preview?: string | null }>>();
-  for (const s of sections) {
-    const p = s.pillar && PILLAR_LABEL[s.pillar] ? s.pillar : "personal";
-    if (!buckets.has(p)) buckets.set(p, []);
-    buckets.get(p)!.push(s);
-  }
-  const ordered = PILLAR_ORDER.filter((p) => buckets.has(p));
-  for (const p of buckets.keys()) if (!ordered.includes(p as (typeof PILLAR_ORDER)[number])) ordered.push(p as (typeof PILLAR_ORDER)[number]);
-  return ordered.map((p) => ({ pillar: p, label: PILLAR_LABEL[p] ?? p, items: buckets.get(p)! }));
-}
-
 /* --------------------------------------------------------------- component */
 
 export function ThemedSite({
@@ -141,7 +48,6 @@ export function ThemedSite({
   theme,
   strings,
   langBadge,
-  currentLang,
   latest,
 }: {
   site: PublicSiteConfig;
@@ -151,747 +57,182 @@ export function ThemedSite({
   currentLang?: string;
   latest?: LatestActivity | null;
 }) {
-  const [displayFont, bodyFont] = theme.fonts;
-  const fontHref = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
-    displayFont,
-  ).replace(/%20/g, "+")}:wght@400;600;700&family=${encodeURIComponent(
-    bodyFont,
-  ).replace(/%20/g, "+")}:wght@400;500;600&display=swap`;
-
-  const isPoster = theme.layout === "poster";
-  const isDashboard = theme.layout === "dashboard";
-  const isEditorial = theme.layout === "editorial";
-  const hero =
-    (site as PublicSiteConfig & { hero_url?: string | null }).hero_url ?? null;
-
+  const [displayFont] = theme.fonts;
   const energy = bandEnergy(theme);
+  const fx = fxFlags(theme);
   const T = typeScale(theme.layout);
   const pop = theme.pop ?? theme.accent;
+  const cardBase = cardBaseFor(theme, T, fx, energy);
 
   /* One plate per entry on the record. The hero's shape is the data. */
   const totalEntries = strings.sections.reduce((n, s) => n + (s.count ?? 0), 0);
-  const form = heroForm(theme.key, theme.band);
-  /* Derived from the background itself, not from which fx flags happen to be
-     set — same reasoning as readableOn(). */
-  const isDarkBg = readableOn(theme.bg) === "#FFFFFF";
-  /* Some themes set bg to a gradient, where appending an alpha suffix would
-     produce garbage. Fall back to a plain fade in that case. */
-  const bgIsHex = /^#[0-9a-fA-F]{6}$/.test(theme.bg.trim());
-  const heroVeil = bgIsHex
-    ? `radial-gradient(120% 82% at ${isPoster ? "50%" : "38%"} 46%, ${theme.bg}E6 24%, ${theme.bg}A6 58%, ${theme.bg}66 100%)`
-    : `radial-gradient(120% 82% at ${isPoster ? "50%" : "38%"} 46%, rgba(0,0,0,0) 24%, ${isDarkBg ? "rgba(0,0,0,.45)" : "rgba(255,255,255,.55)"} 100%)`;
-  const accent2 = theme.accent2 ?? theme.accent;
-
-  const panel = has(theme, "panel");
-  const glow = has(theme, "glow");
-  const neon = has(theme, "neon");
-  const sticker = has(theme, "sticker");
-  const hud = has(theme, "hud");
-  const burst = has(theme, "burst");
-  const bubble = has(theme, "bubble");
-  const tape = has(theme, "tape");
-  const foil = has(theme, "foil");
-  const chalkFx = has(theme, "chalk");
-
-  /* ---- hero photo frame per archetype (v2), comic override (v3) ---- */
-  const photoFrame: React.CSSProperties = panel
-    ? { borderRadius: 10, border: `4px solid ${theme.ink}`, boxShadow: panelShadow(theme.ink, 6) }
-    : theme.layout === "editorial"
-      ? { borderRadius: 10, border: `1px solid ${theme.border}`, boxShadow: `8px 8px 0 ${theme.accent}22` }
-      : theme.layout === "dashboard"
-        ? { borderRadius: 14, border: `2px solid ${theme.accent}`, boxShadow: glow ? `0 0 24px ${theme.accent}66` : `0 0 24px ${theme.accent}44` }
-        : theme.layout === "poster"
-          ? { borderRadius: 0, border: `6px solid ${theme.ink}` }
-          : { borderRadius: "50%", border: `5px solid ${theme.accent}` };
-
-  /* ---- hero name treatment (the theme's signature moment) ---- */
-  const nameStyle: React.CSSProperties = {
-    fontFamily: `'${displayFont}', serif`,
-    fontSize: isPoster ? "clamp(60px, 12vw, 130px)" : "clamp(42px, 7vw, 78px)",
-    lineHeight: 0.95,
-    marginTop: 10,
-    fontWeight: 700,
-    position: "relative",
-    zIndex: 2,
-  };
-  if (panel) {
-    nameStyle.color = "#FFFFFF";
-    nameStyle.WebkitTextStroke = `3px ${theme.ink}`;
-    nameStyle.textShadow = `${5 + energy}px ${5 + energy}px 0 ${theme.accent}`;
-    nameStyle.letterSpacing = "0.02em";
-    nameStyle.transform = "rotate(-1.2deg)";
-  } else if (neon) {
-    nameStyle.textShadow = `0 0 8px ${theme.accent}, 0 0 22px ${theme.accent}, 0 0 46px ${theme.accent}66`;
-  } else if (glow && (isDashboard || isPoster)) {
-    nameStyle.textShadow = `0 0 26px ${theme.accent}55`;
-  }
-
-  /* ---- card treatment per archetype ---- */
-  const cardBase: React.CSSProperties = {
-    background: isEditorial ? "transparent" : theme.card,
-    position: "relative",
-    padding: T.pad,
-    color: theme.ink,
-    textDecoration: "none",
-    display: "block",
-    transition:
-      "transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease",
-  };
-  if (isEditorial) {
-    /* Editorial is a reading column, not a grid. Rows with a hairline rule
-       scan vertically; cards force the eye to zigzag. */
-    Object.assign(cardBase, {
-      border: "none",
-      borderBottom: `1px solid ${theme.border}`,
-      borderRadius: 0,
-      display: "block",
-    });
-  } else if (panel) {
-    Object.assign(cardBase, {
-      border: `3px solid ${theme.ink}`,
-      borderRadius: 10,
-      boxShadow: panelShadow(theme.ink, 4 + energy),
-    });
-  } else if (isDashboard) {
-    Object.assign(cardBase, {
-      border: `1px solid ${theme.border}`,
-      borderTop: `4px solid ${theme.accent}`,
-      borderRadius: 10,
-      boxShadow: glow
-        ? `0 0 0 1px ${theme.accent}22, 0 10px 30px rgba(0,0,0,.35)`
-        : undefined,
-    });
-  } else if (theme.layout === "cards") {
-    Object.assign(cardBase, {
-      border: chalkFx ? `2px dashed ${theme.border}` : `1px solid ${theme.border}`,
-      borderTop: `4px solid ${theme.accent}`,
-      borderRadius: 16,
-      boxShadow: "0 10px 26px rgba(20,24,32,.08)",
-    });
-  } else {
-    Object.assign(cardBase, {
-      border: `1px solid ${theme.border}`,
-      borderTop: `4px solid ${theme.accent}`,
-      borderRadius: 6,
-    });
-  }
 
   return (
-    <div
-      style={{
-        background: theme.bg,
-        color: theme.ink,
-        minHeight: "100vh",
-        fontFamily: `'${bodyFont}', system-ui, sans-serif`,
-        position: "relative",
-        overflow: "hidden",
-        ...(theme.motif
-          ? { backgroundImage: theme.motif, backgroundSize: "26px 26px" }
-          : {}),
-      }}
-      data-energy={energy}
-    >
-      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-      <link rel="stylesheet" href={fontHref} />
-
-      <style>{`
-        @keyframes os-pop {
-          0% { opacity: 0; transform: translateY(${10 + energy * 6}px) scale(.96); }
-          70% { transform: translateY(-${energy}px) scale(1.01); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes os-drop {
-          0% { opacity: 0; transform: translateY(-${20 + energy * 10}px) rotate(-3deg); }
-          60% { transform: translateY(${energy * 2}px) rotate(1deg); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes os-pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: .45; transform: scale(.8); }
-        }
-        @keyframes os-drift {
-          from { background-position: 0 0; }
-          to { background-position: 120px 240px; }
-        }
-        @keyframes os-sheen {
-          0% { transform: translateX(-130%) skewX(-18deg); }
-          100% { transform: translateX(230%) skewX(-18deg); }
-        }
-        .os-card { animation: os-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
-        .os-card:hover {
-          transform: translateY(-${3 + energy * 2}px)${sticker ? " rotate(0deg)" : ""};
-          ${panel ? `box-shadow: ${7 + energy}px ${7 + energy}px 0 ${theme.ink};` : ""}
-          ${!panel && !isDashboard && !isEditorial ? "box-shadow: 0 18px 38px rgba(20,24,32,.14);" : ""}
-          ${isDashboard && glow ? `box-shadow: 0 0 0 1px ${theme.accent}66, 0 14px 34px rgba(0,0,0,.45);` : ""}
-          ${isEditorial ? "box-shadow: 0 8px 20px rgba(20,24,32,.10);" : ""}
-        }
-        .os-hero { animation: os-drop .6s cubic-bezier(.34,1.56,.64,1) both; }
-        .os-badge { animation: os-drop .7s .15s cubic-bezier(.34,1.56,.64,1) both; }
-        .os-foil { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
-        .os-foil::after {
-          content: ""; position: absolute; top: 0; bottom: 0; width: 45%;
-          background: linear-gradient(105deg, transparent, rgba(255,255,255,.55), transparent);
-          animation: os-sheen 3.4s ease-in-out infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .os-card, .os-hero, .os-badge { animation: none !important; }
-          .os-card:hover { transform: none; }
-          .os-foil::after, [data-os-stars], [data-os-pulse] { animation: none !important; }
-        }
-      `}</style>
-
-      {/* full-page fx overlays */}
-      {has(theme, "halftone") ? (
+    <ThemedShell theme={theme} footerNote={strings.footer}>
+      {/* latest-activity elevated to page headline (roadmap R2) */}
+      {latest ? (
         <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            backgroundImage: `radial-gradient(${theme.ink}14 1.4px, transparent 2px)`,
-            backgroundSize: "14px 14px",
-            zIndex: 0,
-          }}
-        />
-      ) : null}
-      {has(theme, "scanlines") ? (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            backgroundImage:
-              "repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px)",
-            zIndex: 3,
-            mixBlendMode: "multiply",
-          }}
-        />
-      ) : null}
-      {has(theme, "stars") ? (
-        <div
-          aria-hidden
-          data-os-stars
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            backgroundImage: `radial-gradient(${accent2}55 1px, transparent 1.6px), radial-gradient(${pop}44 1px, transparent 1.8px)`,
-            backgroundSize: "90px 90px, 140px 140px",
-            backgroundPosition: "0 0, 40px 60px",
-            animation: "os-drift 60s linear infinite",
-            zIndex: 0,
-          }}
-        />
-      ) : null}
-
-      <main
-        className="mx-auto max-w-page px-6 pt-12 pb-24"
-        style={{ position: "relative", zIndex: 1 }}
-      >
-        {/* accent band + language selector (v2) */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
-          <div style={{ height: 6, background: theme.accent, borderRadius: 3, flex: 1 }} />
-          <LanguageSelector theme={theme} />
-        </div>
-        {/* v4: latest-activity elevated to page headline (roadmap R2) */}
-        {latest ? (
-          <div
-            className="os-hero"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              background: panel ? theme.card : `${theme.accent}14`,
-              border: panel ? `3px solid ${theme.ink}` : `1px solid ${theme.accent}55`,
-              borderLeft: panel ? undefined : `6px solid ${theme.accent}`,
-              borderRadius: panel ? 10 : 12,
-              boxShadow: panel ? panelShadow(theme.ink, 4) : undefined,
-              padding: "14px 18px",
-              marginBottom: 32,
-            }}
-          >
-            <span
-              data-os-pulse
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 999,
-                background: pop,
-                display: "inline-block",
-                animation: "os-pulse 1.6s ease-in-out infinite",
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                color: theme.accent,
-                fontSize: 11,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                fontWeight: 700,
-                flexShrink: 0,
-              }}
-            >
-              Latest
-            </span>
-            <span
-              style={{
-                fontFamily: `'${displayFont}', serif`,
-                fontSize: "clamp(15px, 2.4vw, 20px)",
-                fontWeight: 600,
-                color: theme.ink,
-                lineHeight: 1.35,
-              }}
-            >
-              {formatLatest(latest)}
-            </span>
-          </div>
-        ) : (
-          <p
-            style={{
-              color: theme.accent,
-              fontSize: 12,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              marginBottom: 32,
-            }}
-          >
-            {formatLatest(null)}
-          </p>
-        )}
-
-        {/* ------------------------------------------------ hero */}
-        <header
           className="os-hero"
           style={{
             display: "flex",
-            flexWrap: "wrap",
-            gap: 32,
             alignItems: "center",
-            flexDirection: isPoster ? "column" : "row",
-            textAlign: isPoster ? "center" : "left",
-            borderBottom: panel
-              ? `4px solid ${theme.ink}`
-              : `3px solid ${theme.accent}`,
-            paddingBottom: 32,
-            paddingTop: 28,
-            position: "relative",
-            minHeight: isPoster ? "58vh" : "46vh",
+            gap: 12,
+            background: fx.panel ? theme.card : `${theme.accent}14`,
+            border: fx.panel ? `3px solid ${theme.ink}` : `1px solid ${theme.accent}55`,
+            borderLeft: fx.panel ? undefined : `6px solid ${theme.accent}`,
+            borderRadius: fx.panel ? 10 : 12,
+            boxShadow: fx.panel ? panelShadow(theme.ink, 4) : undefined,
+            padding: "14px 18px",
+            marginBottom: 32,
           }}
         >
-          {/* The record, rendered. One plate per entry. Sits behind the
-              identity block; never intercepts a click. */}
-          <HeroStage
-            form={form}
-            entries={totalEntries}
-            bg={theme.bg}
-            accent={theme.accent}
-            accent2={accent2}
-            pop={pop}
-            base={theme.border}
-            mute={theme.soft}
-            light={!isDarkBg}
+          <span
+            data-os-pulse
+            style={{ width: 10, height: 10, borderRadius: 999, background: pop, display: "inline-block", animation: "os-pulse 1.6s ease-in-out infinite", flexShrink: 0 }}
           />
-          {/* keeps the type legible over whatever the stage is doing */}
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: 0,
-              zIndex: 1,
-              pointerEvents: "none",
-              background: heroVeil,
-            }}
-          />
-          {/* diagonal stripe band behind the hero */}
-          {has(theme, "stripes") ? (
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                left: isPoster ? "8%" : 0,
-                right: isPoster ? "8%" : "20%",
-                top: "36%",
-                height: "clamp(40px, 8vw, 90px)",
-                background: `repeating-linear-gradient(-45deg, ${theme.accent} 0 14px, ${accent2} 14px 28px)`,
-                opacity: 0.16,
-                transform: "rotate(-1.5deg)",
-                borderRadius: 6,
-                zIndex: 0,
-              }}
-            />
-          ) : null}
+          <span style={{ color: theme.accent, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", fontWeight: 700, flexShrink: 0 }}>
+            Latest
+          </span>
+          <span style={{ fontFamily: `'${displayFont}', serif`, fontSize: "clamp(15px, 2.4vw, 20px)", fontWeight: 600, color: theme.ink, lineHeight: 1.35 }}>
+            {formatLatest(latest)}
+          </span>
+        </div>
+      ) : (
+        <p style={{ color: theme.accent, fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, marginBottom: 32 }}>
+          {formatLatest(null)}
+        </p>
+      )}
 
-          {hero ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={hero}
-              alt={site.student_first_name}
-              width={200}
-              height={200}
-              style={{
-                width: 200,
-                height: 200,
-                objectFit: "cover",
-                objectPosition: "center 15%",
-                flexShrink: 0,
-                position: "relative",
-                zIndex: 2,
-                transform: sticker || panel ? "rotate(-2deg)" : undefined,
-                ...photoFrame,
-              }}
-            />
-          ) : (
-            /* v5: no photo published -> a character, never a bare initial.
-               Deterministic from the slug, so a family that has not chosen
-               still gets a stable, distinct face. */
-            <StudentAvatar
-              slug={site.slug}
-              firstName={site.student_first_name}
-              tokens={(site as PublicSiteConfig & { avatar_tokens?: Partial<AvatarTokens> | null }).avatar_tokens ?? null}
-              size={200}
-              radius={typeof photoFrame.borderRadius === "number" ? photoFrame.borderRadius : 0}
-              style={{
-                flexShrink: 0,
-                position: "relative",
-                zIndex: 2,
-                transform: sticker || panel ? "rotate(-2deg)" : undefined,
-                ...photoFrame,
-              }}
-            />
-          )}
+      <ThemedHero
+        site={site}
+        theme={theme}
+        variant="site"
+        eyebrow={<>{strings.bandLabel}{langBadge ? ` \u00b7 ${langBadge}` : ""}</>}
+        title={site.student_first_name}
+        badge={theme.badge}
+        chips={[strings.classOf, theme.headerNote, `${strings.sections.length} ${strings.sectionsHeading.toLowerCase()}`]}
+        entries={totalEntries}
+      />
 
-          <div style={{ flex: 1, minWidth: 260, position: "relative", zIndex: 2 }}>
-            <p
-              style={{
-                color: theme.accent,
-                fontSize: 12,
-                letterSpacing: "0.28em",
-                textTransform: "uppercase",
-                fontWeight: 600,
-              }}
-            >
-              {strings.bandLabel}
-              {langBadge ? ` · ${langBadge}` : ""}
-            </p>
-            <h1 style={nameStyle}>{site.student_first_name}</h1>
-
-            {/* rotated hero badge / sticker (v3) */}
-            {theme.badge ? (
-              <span
-                className="os-badge"
-                style={{
-                  display: "inline-block",
-                  marginTop: 14,
-                  background: pop,
-                  color: readableOn(pop),
-                  fontFamily: `'${displayFont}', sans-serif`,
-                  fontSize: 14,
-                  letterSpacing: "0.1em",
-                  padding: "7px 15px",
-                  transform: "rotate(-2deg)",
-                  border: panel ? `3px solid ${theme.ink}` : "none",
-                  borderRadius: panel ? 6 : 999,
-                  boxShadow: panel
-                    ? panelShadow(theme.ink, 3)
-                    : "0 6px 18px rgba(0,0,0,.18)",
-                }}
-              >
-                {theme.badge}
-              </span>
-            ) : null}
-
-            {/* stat chips (v2) */}
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexWrap: "wrap",
-                marginTop: 16,
-                justifyContent: isPoster ? "center" : "flex-start",
-              }}
-            >
-              {[strings.classOf, theme.headerNote, `${strings.sections.length} ${strings.sectionsHeading.toLowerCase()}`]
-                .filter(Boolean)
-                .map((chip) => (
-                  <span
-                    key={chip}
-                    style={{
-                      background: theme.card,
-                      border: panel ? `2px solid ${theme.ink}` : `1px solid ${theme.border}`,
-                      color: theme.soft,
-                      borderRadius: 999,
-                      padding: "6px 14px",
-                      fontSize: 13,
-                    }}
-                  >
-                    {chip}
-                  </span>
-                ))}
-            </div>
-          </div>
-        </header>
-
-        {/* --------------------------------------------- sections */}
-        <section style={{ marginTop: 52 }}>
-          <h2
-            style={{
-              fontFamily: `'${displayFont}', serif`,
-              fontSize: T.h2,
-              fontWeight: 600,
-              letterSpacing: T.track,
-              textAlign: isPoster ? "center" : "left",
-              transform: panel ? "rotate(-0.6deg)" : undefined,
-            }}
-          >
-            {strings.sectionsHeading}
-          </h2>
-          {groupByPillar(strings.sections).map((group) => (
+      {/* --------------------------------------------- sections */}
+      <section style={{ marginTop: 52 }}>
+        <h2
+          style={{
+            fontFamily: `'${displayFont}', serif`,
+            fontSize: T.h2,
+            fontWeight: 600,
+            letterSpacing: T.track,
+            textAlign: fx.isPoster ? "center" : "left",
+            transform: fx.panel ? "rotate(-0.6deg)" : undefined,
+          }}
+        >
+          {strings.sectionsHeading}
+        </h2>
+        {groupByPillar(strings.sections).map((group) => (
           <div key={group.pillar} style={{ marginTop: T.rowGap }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                marginBottom: 4,
-              }}
-            >
-              <span
-                style={{
-                  color: theme.accent,
-                  fontSize: 12,
-                  letterSpacing: "0.18em",
-                  textTransform: "uppercase",
-                  fontWeight: 700,
-                }}
-              >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <span style={{ color: theme.accent, fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>
                 {group.label}
               </span>
               <span style={{ flex: 1, height: 1, background: `${theme.accent}33` }} />
             </div>
-          <div
-            style={{
-              marginTop: 12,
-              display: "grid",
-              gap: isEditorial ? 0 : panel ? 22 : T.gap,
-              gridTemplateColumns: isEditorial
-                ? "minmax(0,1fr)"
-                : "repeat(auto-fit, minmax(260px, 1fr))",
-              ...(isEditorial ? { maxWidth: "68ch" } : {}),
-            }}
-          >
-            {group.items.map((s, i) => {
-              const cardStyle: React.CSSProperties = {
-                ...cardBase,
-                animationDelay: `${0.08 * i}s`,
-              };
-              if (sticker) {
-                cardStyle.transform = `rotate(${i % 2 === 0 ? -1.3 : 1.1}deg)`;
-              }
-              return (
-                <a
-                  key={s.code}
-                  href={`/${site.slug}/section/${s.code}`}
-                  className="os-card"
-                  style={cardStyle}
-                >
-                  {foil ? <span className="os-foil" aria-hidden /> : null}
+            <div
+              style={{
+                marginTop: 12,
+                display: "grid",
+                gap: fx.isEditorial ? 0 : fx.panel ? 22 : T.gap,
+                gridTemplateColumns: fx.isEditorial ? "minmax(0,1fr)" : "repeat(auto-fit, minmax(260px, 1fr))",
+                ...(fx.isEditorial ? { maxWidth: "68ch" } : {}),
+              }}
+            >
+              {group.items.map((s, i) => {
+                const cardStyle: React.CSSProperties = { ...cardBase, animationDelay: `${0.08 * i}s` };
+                if (fx.sticker) cardStyle.transform = `rotate(${i % 2 === 0 ? -1.3 : 1.1}deg)`;
+                const n = s.count ?? 0;
+                return (
+                  <a key={s.code} href={`/${site.slug}/section/${s.code}`} className="os-card" style={cardStyle}>
+                    {fx.foil ? <span className="os-foil" aria-hidden /> : null}
+                    {fx.tape ? (
+                      <span aria-hidden style={{ position: "absolute", top: -10, left: 24, width: 64, height: 20, background: `${pop}AA`, transform: "rotate(-4deg)", borderRadius: 2 }} />
+                    ) : null}
+                    {fx.hud ? (
+                      <>
+                        <span aria-hidden style={{ position: "absolute", top: 6, left: 6, width: 12, height: 12, borderTop: `2px solid ${theme.accent}`, borderLeft: `2px solid ${theme.accent}` }} />
+                        <span aria-hidden style={{ position: "absolute", bottom: 6, right: 6, width: 12, height: 12, borderBottom: `2px solid ${theme.accent}`, borderRight: `2px solid ${theme.accent}` }} />
+                      </>
+                    ) : null}
 
-                  {/* tape strip */}
-                  {tape ? (
-                    <span
-                      aria-hidden
-                      style={{
-                        position: "absolute",
-                        top: -10,
-                        left: 24,
-                        width: 64,
-                        height: 20,
-                        background: `${pop}AA`,
-                        transform: "rotate(-4deg)",
-                        borderRadius: 2,
-                      }}
-                    />
-                  ) : null}
-
-                  {/* HUD corner brackets */}
-                  {hud ? (
-                    <>
-                      <span aria-hidden style={{ position: "absolute", top: 6, left: 6, width: 12, height: 12, borderTop: `2px solid ${theme.accent}`, borderLeft: `2px solid ${theme.accent}` }} />
-                      <span aria-hidden style={{ position: "absolute", bottom: 6, right: 6, width: 12, height: 12, borderBottom: `2px solid ${theme.accent}`, borderRight: `2px solid ${theme.accent}` }} />
-                    </>
-                  ) : null}
-
-                  {/* Section indicator.
-                     Was `{i + 1}` on every card in every theme. That numbering
-                     encoded nothing true - sections are pillars, not a
-                     sequence - and because it restarts per pillar group a
-                     reader saw 1, 2 then 1, 2, 3. Replaced with the entry
-                     count, which is the one number on the card that means
-                     something. Editorial omits the chip entirely: its rows
-                     already state the count in the line beneath the title,
-                     and a reading column does not want ornament. */}
-                  {isEditorial ? null : burst ? (
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minWidth: 34,
-                        height: 34,
-                        padding: "0 10px",
-                        background: (s.count ?? 0) > 0 ? pop : "transparent",
-                        color: (s.count ?? 0) > 0 ? readableOn(pop) : theme.soft,
-                        fontFamily: `'${displayFont}', sans-serif`,
-                        fontSize: 15,
-                        fontWeight: 700,
-                        border: panel
-                          ? `2.5px solid ${theme.ink}`
-                          : (s.count ?? 0) > 0
-                            ? "none"
-                            : `1px dashed ${theme.border}`,
-                        borderRadius: panel ? 8 : 999,
-                        transform: `rotate(${i % 2 === 0 ? -6 : 5}deg)`,
-                        boxShadow: panel ? panelShadow(theme.ink, 2) : "none",
-                      }}
-                    >
-                      {(s.count ?? 0) > 0 ? s.count : "\u2014"}
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minWidth: 30,
-                        height: 26,
-                        padding: "0 9px",
-                        borderRadius: 999,
-                        background: (s.count ?? 0) > 0 ? `${theme.accent}1F` : "transparent",
-                        border: `1px solid ${(s.count ?? 0) > 0 ? theme.accent + "55" : theme.border}`,
-                        color: (s.count ?? 0) > 0 ? theme.accent : theme.soft,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      {(s.count ?? 0) > 0 ? s.count : "\u2014"}
-                    </span>
-                  )}
-
-                  <h3
-                    style={{
-                      fontFamily: `'${displayFont}', serif`,
-                      fontSize: T.h3,
-                      fontWeight: 600,
-                      letterSpacing: T.track,
-                      lineHeight: 1.3,
-                      marginTop: isEditorial ? 0 : 10,
-                    }}
-                  >
-                    {s.title}
-                  </h3>
-
-                  {/* grow note / live count — speech bubble when the theme talks in bubbles */}
-                  {bubble ? (
-                    <span
-                      style={{
-                        position: "relative",
-                        display: "block",
-                        marginTop: 14,
-                        background: theme.bg,
-                        border: `2px solid ${theme.ink}`,
-                        borderRadius: 14,
-                        padding: "10px 14px",
-                        fontSize: 13.5,
-                        color: theme.ink,
-                      }}
-                    >
+                    {/* Entry count: the one number on the card that means
+                       something. Editorial omits the chip; its rows already
+                       state the count beneath the title. */}
+                    {fx.isEditorial ? null : fx.burst ? (
                       <span
-                        aria-hidden
                         style={{
-                          position: "absolute",
-                          bottom: -8,
-                          left: 26,
-                          width: 12,
-                          height: 12,
-                          background: theme.bg,
-                          borderRight: `2px solid ${theme.ink}`,
-                          borderBottom: `2px solid ${theme.ink}`,
-                          transform: "rotate(45deg)",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          minWidth: 34,
+                          height: 34,
+                          padding: "0 10px",
+                          background: n > 0 ? pop : "transparent",
+                          color: n > 0 ? readableOn(pop) : theme.soft,
+                          fontFamily: `'${displayFont}', sans-serif`,
+                          fontSize: 15,
+                          fontWeight: 700,
+                          border: fx.panel ? `2.5px solid ${theme.ink}` : n > 0 ? "none" : `1px dashed ${theme.border}`,
+                          borderRadius: fx.panel ? 8 : 999,
+                          transform: `rotate(${i % 2 === 0 ? -6 : 5}deg)`,
+                          boxShadow: fx.panel ? panelShadow(theme.ink, 2) : "none",
                         }}
-                      />
-                      {(s.count ?? 0) > 0
-                        ? `${s.count} ${s.count === 1 ? "entry" : "entries"}${s.preview ? " · " + s.preview : ""}`
-                        : strings.growNote}
-                    </span>
-                  ) : (
-                    <p style={{
-                      color: (s.count ?? 0) > 0 ? theme.ink : theme.soft,
-                      marginTop: isEditorial ? 4 : 8,
-                      fontSize: T.body,
-                      lineHeight: 1.55,
-                      fontWeight: (s.count ?? 0) > 0 ? 600 : 400,
-                      ...(isEditorial ? { marginTop: 4 } : {}),
-                    }}>
-                      {(s.count ?? 0) > 0
-                        ? `${s.count} ${s.count === 1 ? "entry" : "entries"}${s.preview ? " · " + s.preview : ""}`
-                        : strings.growNote}
-                    </p>
-                  )}
-                </a>
-              );
-            })}
-          </div>
-          </div>
-          ))}
-          {(theme.band === "band_1_5" || theme.band === "band_6_12") ? (
-            <TrophyCase
-              slug={site.slug}
-              accent={theme.accent}
-              ink={theme.ink}
-              card={theme.card}
-              displayFont={displayFont}
-            />
-          ) : null}
-        </section>
+                      >
+                        {n > 0 ? n : "\u2014"}
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          minWidth: 30,
+                          height: 26,
+                          padding: "0 9px",
+                          borderRadius: 999,
+                          background: n > 0 ? `${theme.accent}1F` : "transparent",
+                          border: `1px solid ${n > 0 ? theme.accent + "55" : theme.border}`,
+                          color: n > 0 ? theme.accent : theme.soft,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {n > 0 ? n : "\u2014"}
+                      </span>
+                    )}
 
-        {/* ----------------------------------------------- footer (v2) */}
-        <footer
-          style={{
-            marginTop: 80,
-            borderTop: panel
-              ? `3px solid ${theme.ink}`
-              : `1px solid ${theme.border}`,
-            paddingTop: 24,
-            color: theme.soft,
-            fontSize: 12,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 20,
-            flexWrap: "wrap",
-          }}
-        >
-          <a href="https://outcomestar.app" style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://outcomestar.app/outcomestar_logo_primary.png" alt="outcomestar" style={{ height: 32, background: "#fff", borderRadius: 6, padding: "5px 10px", opacity: 0.9 }} />
-          </a>
-          <div style={{ textAlign: "right" as const, flexShrink: 0 }}>
-            <p style={{ margin: 0 }}>
-              <a href="https://outcomestar.app/user-agreement" style={{ color: theme.soft, textDecoration: "underline" }}>Terms</a>
-              {" \u00b7 "}
-              <a href="https://outcomestar.app/privacy-policy" style={{ color: theme.soft, textDecoration: "underline" }}>Privacy</a>
-              {" \u00b7 "}
-              <a href="https://outcomestar.app/disclaimer" style={{ color: theme.soft, textDecoration: "underline" }}>Disclaimer</a>
-            </p>
-            <p style={{ margin: "6px 0 0" }}>&copy; 2026 SRJ Consulting &amp; Services LLC</p>
-            <p style={{ margin: "6px 0 0", maxWidth: 320, fontSize: 11, opacity: 0.85 }}>{strings.footer}</p>
+                    <h3 style={{ fontFamily: `'${displayFont}', serif`, fontSize: T.h3, fontWeight: 600, letterSpacing: T.track, lineHeight: 1.3, marginTop: fx.isEditorial ? 0 : 10 }}>
+                      {s.title}
+                    </h3>
+
+                    {fx.bubble ? (
+                      <span style={{ position: "relative", display: "block", marginTop: 14, background: theme.bg, border: `2px solid ${theme.ink}`, borderRadius: 14, padding: "10px 14px", fontSize: 13.5, color: theme.ink }}>
+                        <span aria-hidden style={{ position: "absolute", bottom: -8, left: 26, width: 12, height: 12, background: theme.bg, borderRight: `2px solid ${theme.ink}`, borderBottom: `2px solid ${theme.ink}`, transform: "rotate(45deg)" }} />
+                        {n > 0 ? `${n} ${n === 1 ? "entry" : "entries"}${s.preview ? " \u00b7 " + s.preview : ""}` : strings.growNote}
+                      </span>
+                    ) : (
+                      <p style={{ color: n > 0 ? theme.ink : theme.soft, marginTop: fx.isEditorial ? 4 : 8, fontSize: T.body, lineHeight: 1.55, fontWeight: n > 0 ? 600 : 400 }}>
+                        {n > 0 ? `${n} ${n === 1 ? "entry" : "entries"}${s.preview ? " \u00b7 " + s.preview : ""}` : strings.growNote}
+                      </p>
+                    )}
+                  </a>
+                );
+              })}
+            </div>
           </div>
-        </footer>
-      </main>
-    </div>
+        ))}
+        {theme.band === "band_1_5" || theme.band === "band_6_12" ? (
+          <TrophyCase slug={site.slug} accent={theme.accent} ink={theme.ink} card={theme.card} displayFont={displayFont} />
+        ) : null}
+      </section>
+    </ThemedShell>
   );
 }

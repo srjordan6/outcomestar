@@ -863,7 +863,7 @@ const MissionControl: React.FC<MissionControlProps> = ({
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
         @keyframes mc-blink {
           0%, 100% { opacity: 1; }
@@ -874,7 +874,7 @@ const MissionControl: React.FC<MissionControlProps> = ({
           100% { transform: translateX(-100%); }
         }
         .mc-root, .mc-root * { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
-      `}</style>
+      ` }} />
       <div
         className="mc-root relative min-h-screen w-full overflow-x-hidden"
         style={{
