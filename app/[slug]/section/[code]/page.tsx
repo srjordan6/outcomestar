@@ -85,11 +85,16 @@ export default async function SectionPage({ params }: { params: { slug: string; 
   const backLink = (
     <a href={`/${site!.slug}`} style={{ color: "inherit", textDecoration: "none" }}>&larr; {first}</a>
   );
-  const lower = prog?.direction !== "higher";
+  /* Every word below comes from the scale, so a cellist's page reads about
+     ratings and a swimmer's about times without either being special-cased. */
+  const lower = prog ? prog.direction === "lower" : true;
+  const noun = prog ? prog.scale.label.replace(/\s*\(.*\)$/, "").toLowerCase() : "";
+  const move = lower ? "watch them fall" : "watch them climb";
+  const backwards = lower ? "worse" : "lower";
   const dropSub = prog
     ? prog.slower === 0
-      ? <>{prog.improved} events. <b style={{ color: "#fff", fontWeight: 600 }}>Not one of them {lower ? "slower" : "lower"}.</b> Each tower stands at the first recorded {lower ? "time" : "score"} &mdash; watch {lower ? "them fall" : "it climb"} to where {first} is now.</>
-      : <>{prog.improved} of {prog.timed} events {lower ? "faster" : "higher"} than the first attempt. Each tower stands at that first {lower ? "time" : "score"} &mdash; watch {lower ? "them fall" : "it climb"} to where {first} is now.</>
+      ? <>{prog.improved} {prog.improved === 1 ? "entry" : "entries"}. <b style={{ color: "#fff", fontWeight: 600 }}>Not one of them {backwards}.</b> Each tower stands at the first recorded {noun} &mdash; {move} to where {first} is now.</>
+      : <>{prog.improved} of {prog.timed} improved on the first attempt. Each tower stands at that first {noun} &mdash; {move} to where {first} is now.</>
     : null;
 
   return (
@@ -103,8 +108,9 @@ export default async function SectionPage({ params }: { params: { slug: string; 
           events={prog.events}
           direction={prog.direction}
           totalGain={prog.totalGain}
-          unit={lower ? "SECONDS FASTER" : "POINTS HIGHER"}
-          hudLabel={lower ? "Events dropped" : "Events raised"}
+          unit={prog.unit}
+          hudLabel={prog.hud}
+          format={prog.scale.format}
           eyebrow={<>{backLink}{pillar ? <> &middot; {pillar}</> : null}{prog.years ? <> &middot; {prog.years[0]}&ndash;{prog.years[1]}</> : null}</>}
           sub={dropSub}
           accent={theme.accent}
