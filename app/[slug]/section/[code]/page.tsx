@@ -1,10 +1,16 @@
 /**
- * app/[slug]/section/[code]/page.tsx — v2 (2026-08-24).
+ * app/[slug]/section/[code]/page.tsx — v3 (2026-08-24).
  *
- * Section pages now render inside the same design as the landing page:
+ * Section pages render inside the same design as the landing page:
  * ThemedShell (fonts, fx overlays, motion, footer) + ThemedHero (stage,
  * veil, character, signature heading). The stage shows THIS section's
  * entries, so the swim page's backdrop is the swim record.
+ *
+ * v3: when the section's items carry a first value and a current value for
+ * enough events, the hero is The Drop instead: every improved event as a
+ * tower falling from where it started to where it is now, the total gained
+ * counting up in the headline. Inferred from the meta shape (any section
+ * with first/best pairs), not keyed to athlete_tracker.
  *
  * Entry cards and the best-times board use the archetype card treatment
  * from showcaseKit, so a comic-book site gets panels here and a
@@ -16,9 +22,11 @@ import type { Metadata } from "next";
 import { getPublicSite } from "@/lib/publicSite";
 import { getLatest, formatLatest } from "@/lib/latestActivity";
 import { resolveGenericTheme, GENERIC_THEMES, type GenericThemeTokens } from "@/lib/genericThemes";
-import { bandEnergy, cardBaseFor, fxFlags, PILLAR_LABEL, typeScale, type FxFlags } from "@/lib/showcaseKit";
+import { bandEnergy, cardBaseFor, fxFlags, isDarkBg, PILLAR_LABEL, typeScale, type FxFlags } from "@/lib/showcaseKit";
+import { parseTime, progressionFrom } from "@/lib/progression";
 import { ThemedShell } from "../../ThemedShell";
 import { ThemedHero } from "../../ThemedHero";
+import TheDrop from "../../TheDrop";
 
 const API = process.env.NEXT_PUBLIC_FOCMS_API || "https://focms-api.onrender.com";
 
@@ -68,6 +76,19 @@ export default async function SectionPage({ params }: { params: { slug: string; 
   const ref = site!.sections.find((s) => s.code === params.code);
   const pillar = ref?.pillar && PILLAR_LABEL[ref.pillar] ? PILLAR_LABEL[ref.pillar] : null;
   const n = section.items.length;
+  const first = site!.student_first_name;
+
+  /* The Drop, when the record can carry it. */
+  const prog = progressionFrom(section.items);
+  const backLink = (
+    <a href={`/${site!.slug}`} style={{ color: "inherit", textDecoration: "none" }}>&larr; {first}</a>
+  );
+  const lower = prog?.direction !== "higher";
+  const dropSub = prog
+    ? prog.slower === 0
+      ? <>{prog.improved} events. <b style={{ color: "#fff", fontWeight: 600 }}>Not one of them {lower ? "slower" : "lower"}.</b> Each tower stands at the first recorded {lower ? "time" : "score"} &mdash; watch {lower ? "them fall" : "it climb"} to where {first} is now.</>
+      : <>{prog.improved} of {prog.timed} events {lower ? "faster" : "higher"} than the first attempt. Each tower stands at that first {lower ? "time" : "score"} &mdash; watch {lower ? "them fall" : "it climb"} to where {first} is now.</>
+    : null;
 
   return (
     <ThemedShell theme={theme}>
@@ -75,22 +96,40 @@ export default async function SectionPage({ params }: { params: { slug: string; 
         {formatLatest(latest)}
       </p>
 
-      <ThemedHero
-        site={site!}
-        theme={theme}
-        variant="section"
-        eyebrow={
-          <>
-            <a href={`/${site!.slug}`} style={{ color: theme.accent, textDecoration: "none" }}>&larr; {site!.student_first_name}</a>
-            {pillar ? ` \u00b7 ${pillar}` : ""}
-          </>
-        }
-        title={section.title}
-        chips={[n > 0 ? `${n} ${n === 1 ? "entry" : "entries"}` : "", site!.band_label]}
-        entries={n}
-      />
+      {prog ? (
+        <TheDrop
+          events={prog.events}
+          direction={prog.direction}
+          totalGain={prog.totalGain}
+          unit={lower ? "SECONDS FASTER" : "POINTS HIGHER"}
+          hudLabel={lower ? "Events dropped" : "Events raised"}
+          eyebrow={<>{backLink}{pillar ? <> &middot; {pillar}</> : null}{prog.years ? <> &middot; {prog.years[0]}&ndash;{prog.years[1]}</> : null}</>}
+          sub={dropSub}
+          accent={theme.accent}
+          accent2={theme.accent2 ?? theme.accent}
+          ground={dropGround(theme)}
+          displayFont={displayFont}
+          radius={typeof cardBase.borderRadius === "number" ? cardBase.borderRadius : 0}
+        />
+      ) : (
+        <ThemedHero
+          site={site!}
+          theme={theme}
+          variant="section"
+          eyebrow={<>{backLink}{pillar ? ` \u00b7 ${pillar}` : ""}</>}
+          title={section.title}
+          chips={[n > 0 ? `${n} ${n === 1 ? "entry" : "entries"}` : "", site!.band_label]}
+          entries={n}
+        />
+      )}
 
       <section style={{ marginTop: 40 }}>
+        {prog ? (
+          <h2 style={{ fontFamily: `'${displayFont}', serif`, fontSize: T.h2, fontWeight: 600, letterSpacing: T.track, marginBottom: 24, transform: fx.panel ? "rotate(-0.6deg)" : undefined }}>
+            {section.title}
+            <span style={{ color: theme.soft, fontSize: T.body, fontWeight: 500, letterSpacing: 0, marginLeft: 14 }}>{n} {n === 1 ? "entry" : "entries"}</span>
+          </h2>
+        ) : null}
         {n === 0 ? (
           <div className="os-card" style={cardBase}>
             <p style={{ color: theme.soft, fontSize: T.body }}>
@@ -140,14 +179,18 @@ export default async function SectionPage({ params }: { params: { slug: string; 
   );
 }
 
-function parseTime(t?: string): number | null {
-  if (!t) return null;
-  const m = t.match(/^(?:(\d+):)?([0-5]?\d)(?:\.(\d+))?$/);
-  if (!m) return null;
-  const min = parseInt(m[1] || "0", 10);
-  const sec = parseInt(m[2] || "0", 10);
-  const frac = m[3] ? parseFloat("0." + m[3]) : 0;
-  return min * 60 + sec + frac;
+/**
+ * The Drop is always on dark ground: it is a cinematic inset. Dark themes
+ * use their own background; light themes get a near-black derived from the
+ * secondary accent so the stage still belongs to the palette.
+ */
+function dropGround(theme: GenericThemeTokens): string {
+  if (isDarkBg(theme) && /^#[0-9a-fA-F]{6}$/.test(theme.bg.trim())) return theme.bg.trim();
+  const src = (theme.accent2 ?? theme.accent).replace("#", "");
+  const n = parseInt(src.slice(0, 6), 16);
+  if (!Number.isFinite(n)) return "#04070E";
+  const ch = (v: number) => Math.round(v * 0.13 + 3).toString(16).padStart(2, "0");
+  return `#${ch((n >> 16) & 255)}${ch((n >> 8) & 255)}${ch(n & 255)}`;
 }
 function fmtDrop(best?: string, first?: string): { drop: string; pct: string } {
   const b = parseTime(best), f = parseTime(first);
