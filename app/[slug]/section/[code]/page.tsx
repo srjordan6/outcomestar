@@ -30,7 +30,7 @@ import { ThemedShell } from "../../ThemedShell";
 import { ThemedHero } from "../../ThemedHero";
 import TheDrop from "../../TheDrop";
 
-const API = process.env.NEXT_PUBLIC_FOCMS_API || "https://focms-api.onrender.com";
+const API = process.env.FOCMS_API_URL || "https://focms-api.onrender.com";
 
 type Item = {
   title: string;

@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "outcomestar-app",
+  // 2025-04-01 or later, not merely the 2024-09-23 minimum: April 1 2025 is
+  // when process.env population became the default. An earlier date leaves
+  // every var below unreadable at runtime with no error to point at.
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Non-secrets only. FOCMS_API_TOKEN, ADMIN_PASSWORD and
+  // GOOGLE_TRANSLATE_API_KEY are secrets: set them with
+  //   npx wrangler secret put <NAME>
+  // and never commit them here.
+  "vars": {
+    "FOCMS_API_URL": "https://focms-api.onrender.com",
+    "NEXT_PUBLIC_FOCMS_API_BASE": "https://focms-api.onrender.com",
+    "FOCMS_FEED_URL": "https://johnrjordan.com/focms-feed-swim-bests/"
+  }
+}
