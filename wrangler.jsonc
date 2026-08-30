@@ -18,6 +18,10 @@
   "routes": [
     { "pattern": "app.outcomestar.app", "custom_domain": true }
   ],
+  // Keep the workers.dev test URL alive alongside the custom domain. Once a
+  // route exists, wrangler's default flips to disabling workers.dev - the
+  // 06:52 deploy proved that by turning it off.
+  "workers_dev": true,
   "observability": {
     "enabled": true
   },
