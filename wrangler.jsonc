@@ -11,6 +11,13 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  // Production domain. Deploying with this attaches the custom domain and
+  // writes the DNS record for app.outcomestar.app -> this worker, replacing
+  // the CNAME to Render. wrangler prompts before overwriting the existing
+  // record. workers.dev stays enabled as a secondary test URL.
+  "routes": [
+    { "pattern": "app.outcomestar.app", "custom_domain": true }
+  ],
   "observability": {
     "enabled": true
   },
