@@ -18,10 +18,11 @@ import { GOOGLE_LANGUAGE_CODES } from "@/lib/googleLanguages";
 import { getLatest } from "@/lib/latestActivity";
 
 export async function generateMetadata({
-  params,
+  params: paramsPromise,
 }: {
-  params: { slug: string; lang: string };
+  params: Promise<{ slug: string; lang: string }>;
 }): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await getPublicSite(params.slug);
   if (!site) return { title: "Not found" };
   return {
@@ -32,10 +33,11 @@ export async function generateMetadata({
 }
 
 export default async function LangSitePage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { slug: string; lang: string };
+  params: Promise<{ slug: string; lang: string }>;
 }) {
+  const params = await paramsPromise;
   const site = await getPublicSite(params.slug);
   if (!site) notFound();
   const lang = params.lang;

@@ -52,7 +52,8 @@ function themeFor(site: NonNullable<Awaited<ReturnType<typeof getPublicSite>>>):
   );
 }
 
-export async function generateMetadata({ params }: { params: { slug: string; code: string } }): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: { params: Promise<{ slug: string; code: string }> }): Promise<Metadata> {
+  const params = await paramsPromise;
   const site = await getPublicSite(params.slug);
   if (!site) return { title: "Not found" };
   const ref = site.sections.find((s) => s.code === params.code);
@@ -62,7 +63,8 @@ export async function generateMetadata({ params }: { params: { slug: string; cod
   };
 }
 
-export default async function SectionPage({ params }: { params: { slug: string; code: string } }) {
+export default async function SectionPage({ params: paramsPromise }: { params: Promise<{ slug: string; code: string }> }) {
+  const params = await paramsPromise;
   const site = await getPublicSite(params.slug);
   if (!site) notFound();
   const section = await getSection(params.slug, params.code);

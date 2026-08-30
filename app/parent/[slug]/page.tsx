@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { ParentContext } from "@/lib/types";
 import { verifyToken, ApiError } from "@/lib/api";
@@ -8,7 +8,8 @@ import { saveToken, loadToken, saveContext, clearToken } from "@/lib/parentAuth"
 import CaptureFormRenderer from "@/components/parent/CaptureFormRenderer";
 import LocaleSwitcher from "@/components/parent/LocaleSwitcher";
 
-export default function ParentPage({ params }: { params: { slug: string } }) {
+export default function ParentPage({ params: paramsPromise }: { params: Promise<{ slug: string }> }) {
+  const params = use(paramsPromise);
   const searchParams = useSearchParams();
   const [token, setToken] = useState<string | null>(null);
   const [ctx, setCtx] = useState<ParentContext | null>(null);

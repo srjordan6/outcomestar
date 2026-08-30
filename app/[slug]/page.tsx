@@ -14,10 +14,11 @@ import { PowerIndexHero } from "./PowerIndexHero";
 import { EventTable } from "./EventTable";
 
 export async function generateMetadata({
-  params,
+  params: paramsPromise,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
+  const params = await paramsPromise;
   const student = STUDENTS[params.slug];
   if (!student) {
     const site = await getPublicSite(params.slug);
@@ -37,10 +38,11 @@ export async function generateMetadata({
 }
 
 export default async function StudentPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
+  const params = await paramsPromise;
   const student = STUDENTS[params.slug];
   if (!student) {
     // v0.2: wizard-published family sites resolve via the anonymous
