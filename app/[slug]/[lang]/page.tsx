@@ -63,7 +63,7 @@ export default async function LangSitePage({
     sectionsHeading: tr[2],
     growNote: tr[3],
     footer: tr[4],
-    sections: base.sections.map((s, i) => ({ code: s.code, title: tr[5 + i] })),
+    sections: base.sections.map((s, i) => ({ ...s, title: tr[5 + i] })),
   };
 
   if (!theme) return <GenericSite site={site!} />;
