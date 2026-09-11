@@ -13,7 +13,7 @@ import { cookies } from "next/headers";
 import { loginAction } from "./actions";
 import AdminClient from "./AdminClient";
 
-const API = process.env.FOCMS_API_URL ?? "https://focms-api.onrender.com";
+const API = process.env.FOCMS_API_URL ?? "https://api.outcomestar.app";
 const API_TOKEN = process.env.FOCMS_API_TOKEN;
 const COOKIE_NAME = "outcomestar_admin";
 

@@ -30,8 +30,10 @@
   //   npx wrangler secret put <NAME>
   // and never commit them here.
   "vars": {
-    "FOCMS_API_URL": "https://focms-api.onrender.com",
-    "NEXT_PUBLIC_FOCMS_API_BASE": "https://focms-api.onrender.com",
+    // 2026-09-10: focms-api moved from Render to Stephen's PC, published as
+    // api.outcomestar.app via Cloudflare Tunnel. Render URL retired.
+    "FOCMS_API_URL": "https://api.outcomestar.app",
+    "NEXT_PUBLIC_FOCMS_API_BASE": "https://api.outcomestar.app",
     "FOCMS_FEED_URL": "https://johnrjordan.com/focms-feed-swim-bests/"
   }
 }

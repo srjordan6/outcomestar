@@ -19,7 +19,7 @@ import type { GenericThemeTokens } from "@/lib/genericThemes";
 import { bandEnergy, cardBaseFor, fxFlags, typeScale } from "@/lib/showcaseKit";
 
 const API =
-  process.env.NEXT_PUBLIC_FOCMS_API_URL ?? "https://focms-api.onrender.com";
+  process.env.NEXT_PUBLIC_FOCMS_API_URL ?? "https://api.outcomestar.app";
 
 type Badge = { icon: string; label: string; sub: string };
 

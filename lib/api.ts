@@ -2,7 +2,7 @@
 
 import type { ParentContext, FormResponse, FieldUpdate, SaveResponse } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_FOCMS_API_BASE || "https://focms-api.onrender.com";
+const API_BASE = process.env.NEXT_PUBLIC_FOCMS_API_BASE || "https://api.outcomestar.app";
 
 export class ApiError extends Error {
   status: number;

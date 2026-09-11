@@ -4,7 +4,7 @@
  * Returns null when the slug is unknown or unpublished.
  */
 
-const API = process.env.FOCMS_API_URL ?? "https://focms-api.onrender.com";
+const API = process.env.FOCMS_API_URL ?? "https://api.outcomestar.app";
 
 export type PublicSiteConfig = {
   slug: string;

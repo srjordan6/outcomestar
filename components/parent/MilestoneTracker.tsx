@@ -14,7 +14,7 @@ const C = {
 };
 const FONT_SERIF = 'Georgia, "Times New Roman", serif';
 const FONT_SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-const API_BASE = "https://focms-api.onrender.com";
+const API_BASE = "https://api.outcomestar.app";
 const MAX_FILE_MB = 25;
 
 interface CatalogRow {

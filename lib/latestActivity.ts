@@ -1,7 +1,7 @@
 export type LatestActivity = { date: string; kind: string };
 export type LatestResponse = { latest: LatestActivity | null };
 
-const API = process.env.FOCMS_API_URL || "https://focms-api.onrender.com";
+const API = process.env.FOCMS_API_URL || "https://api.outcomestar.app";
 
 export async function getLatest(slug: string): Promise<LatestActivity | null> {
   try {

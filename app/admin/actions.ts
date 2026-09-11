@@ -16,7 +16,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-const API = process.env.FOCMS_API_URL ?? "https://focms-api.onrender.com";
+const API = process.env.FOCMS_API_URL ?? "https://api.outcomestar.app";
 const API_TOKEN = process.env.FOCMS_API_TOKEN;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 const COOKIE_NAME = "outcomestar_admin";

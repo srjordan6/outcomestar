@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MilestoneTracker } from "@/components/parent/MilestoneTracker";
 
-const API_BASE = "https://focms-api.onrender.com";
+const API_BASE = "https://api.outcomestar.app";
 
 interface VerifyResponse {
   valid: boolean;
