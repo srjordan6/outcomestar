@@ -1,22 +1,23 @@
 /**
  * FOCMS data client.
  *
- * For v0.1 we read swim data from the public WP feed page on johnrjordan.com.
- * That feed is regenerated from Postgres and is the same JSON the inline
- * hydrator was consuming. This gets the site live today.
- *
- * Phase 2 work (next): add direct REST endpoints to focms-api so we don't
- * depend on WordPress. The Power Index endpoint already exists at
- *   GET /focms/v1/student/{id}/computed/power-index
- * but swim bests, standards, and metadata still need endpoints.
+ * 2026-09-18: swim data now comes from focms-api's server-computed feed
+ *   GET /focms/v1/student/{id}/computed/swim-bests   (exists since v0.4.1)
+ * which is live against personal_records. The johnrjordan.com WordPress page is
+ * kept ONLY as a fallback; it is a hand-pasted JSON snapshot that was three months
+ * stale when this switch was made. If you see `swim feed: WP fallback` in the
+ * Worker logs, the API path failed and the numbers on the page are old.
  */
 
 const FEED_URL =
   process.env.FOCMS_FEED_URL ??
   "https://johnrjordan.com/focms-feed-swim-bests/";
+const API_URL = process.env.FOCMS_API_URL || "https://api.outcomestar.app";
+const API_TOKEN = process.env.FOCMS_API_TOKEN;
 
 export type StudentRef = {
   slug: string;
+  studentId: string;
   displayName: string;
   classYear: number;
   firstTimes: Record<string, string>;
@@ -26,6 +27,7 @@ export type StudentRef = {
 export const STUDENTS: Record<string, StudentRef> = {
   john: {
     slug: "john",
+    studentId: "019ed384-5769-72ca-864a-28e40c4e5d30",
     displayName: "John Ray Jordan",
     classYear: 2032,
     birthDate: "2014-08-29",
@@ -97,7 +99,25 @@ export type SwimFeed = {
   };
 };
 
-export async function getSwimFeed(): Promise<SwimFeed> {
+export async function getSwimFeed(
+  studentId: string = STUDENTS.john.studentId,
+): Promise<SwimFeed> {
+  // 1. live path: focms-api computed feed (same schema, superset of fields)
+  if (API_TOKEN) {
+    try {
+      const r = await fetch(
+        `${API_URL}/focms/v1/student/${studentId}/computed/swim-bests`,
+        { headers: { Authorization: `Bearer ${API_TOKEN}` }, cache: "no-store" },
+      );
+      if (r.ok) return (await r.json()) as SwimFeed;
+      console.warn(`swim feed: API ${r.status}, using WP fallback`);
+    } catch (e) {
+      console.warn("swim feed: API unreachable, using WP fallback", e);
+    }
+  } else {
+    console.warn("swim feed: FOCMS_API_TOKEN not set, using WP fallback");
+  }
+  // 2. fallback: the static WordPress page (stale snapshot)
   const res = await fetch(`${FEED_URL}?cb=${Date.now()}`, {
     next: { revalidate: 300 },
     cache: "no-store",
